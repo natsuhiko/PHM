@@ -4,9 +4,10 @@
 #include <zlib.h>
 #include <string.h>
 
-#include <cblas.h>
 #include <f2c.h>
+#include <blaswrap.h>
 #include <clapack.h>
+#include <cblas.h>
 
 double* BS;
 double* BT;
