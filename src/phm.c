@@ -272,7 +272,6 @@ double vcovMultinom(double* X, double* Xt, double* R, double* y, double* p, long
 #endif
         //res[i]=sqrt(V[i]);
     }
-    printf("\n");
     
     double vv = V[P-1-offs];
     free(V);
@@ -359,10 +358,8 @@ void emATACMultinom(double* bf, double* X, long N, long P, long LDXT, double* Z,
         //fprintf(stderr, "pi=(%lf, %lf, %lf)\n", 1./totb, exp(beta[0])/totb, 2.*exp(beta[1])/totb);
         
     }
-    
     // vcov
     vcovMultinom(X, Xt, R, y, p, N*3, P, 3L, beta+P, 0);
-    
     // Z
 #ifdef FULLBF
     double phi = 0.07862747919984960920381;
@@ -385,7 +382,7 @@ void emATACMultinom(double* bf, double* X, long N, long P, long LDXT, double* Z,
             z1[j] += Z[i+j*N];
         }
     }
-    printV(z1, 10);
+    //printV(z1, 10);
 #endif
     
 }
@@ -401,7 +398,7 @@ int main(int argc, char** argv){
     long info;
     
     if(argc==1){usage(); return -1;}
-    for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--verbose")==0 | strcmp(argv[k],"-v")==0){verbose=1;}}
+    for(k=0; k<argc; k++){if(strcmp(argv[k],"--verbose")==0 | strcmp(argv[k],"-v")==0){verbose=1;}}
     
     if(verbose>0){
         fprintf(stderr, "Command: ");
@@ -826,7 +823,7 @@ int main(int argc, char** argv){
 #ifdef PEN
             fwrite(beta, sizeof(double), P+P*P, outf);
 #else
-            printV(beta, P*2);
+            //printV(beta, P*2);
             fwrite(beta, sizeof(double), P*2, outf);
 #endif
             fclose(outf);
