@@ -1,8 +1,18 @@
 # Pairwise Hierarchical Model
-A Bayesian hierarchical model that incorporates techniques from Mendelian Randomisation
+A Bayesian hierarchical model to map causal interactions between regulatory elements in the genome, that incorporates techniques from Mendelian Randomisation
 
 ## How to build & install
-**Please make sure HTSLIB, CLAPACK and GSL (GNU Scientific Library) are installed in your environment** (if you don't have them, then see below for installation tips).
+**Please make sure HTSLIB and CLAPACK are installed in your environment** (if you don't have them, then see below for installation tips).
+
+To build and install the pairwise hierarchical model, firstly go to the _source_ directory (*src*), then set environment variables appropriately to point to the CLAPACK and HTSLIB.  Finally use "make" to build and install *phm* which will be installed in "$PHMDIR/bin".
+
+        PHMDIR=/path/to/phmdir/
+        cd $PHMDIR/src
+        # Not run!  Please export your environment.
+        export CFLAGS="-I/path/to/your/CLAPACK-*.*.*.*/INCLUDE -I/path/to/your/CLAPACK-*.*.*.*/F2CLIBS"
+        export LDFLAGS="-L/path/to/your/CLAPACK-*.*.*.* -L/path/to/your/CLAPACK-*.*.*.*/F2CLIBS"
+        make
+        make install
 
 ## Installation tips for CLAPACK and GSL
 
@@ -20,11 +30,3 @@ When it has been done, you will find three archive files in the directory which 
         ln -s blas_LINUX.a libblas.a
 
 before compiling the pairwise hierarchical model.
-
-You may also need to get GSL (GNU Scientific Library) from http://www.gnu.org/software/gsl/ (if it is not installed).  Then, compile it like
-
-        tar zxvf gsl-*.*.tar.gz
-        cd gsl-*.*
-        ./configure --prefix=$PWD
-        make
-        make install

@@ -12,6 +12,8 @@
 double* BS;
 double* BT;
 
+int verbose;
+
 int endWith(char* x, char* y);
 void printV(double* x, long n);
 void printVL(long* x, long n);
