@@ -14,6 +14,17 @@ To build and install the pairwise hierarchical model, firstly go to the _source_
         make
         make install
 
+## Model fitting
+
+Pairwise hierarchical model uses QTL signal to map causal interaction between regulatory elements (hereafter we refer those elemnts as *peaks*). The model employs 2 stage optimisation: the first step is fitting a standard hierarchical model to estimate the variant-level and peak-level prior probabilities under the assumption that peaks are independent; then the second step is fitting the pairwise hierarchical model using the parameter estimate in the first stage. At each model fitting stage, the Bayes factors of genetic associations are required. The next section provides the information. 
+
+	hm  bf1.gz -v variant_level.gz -f peak_level.gz
+	phm bf2.gz -p posterior_prob.gz -c coef.gz
+
+## Bayes factor preparation
+
+PHM takes Bayes factors of QTL associations.
+
 ## Installation tips for CLAPACK and GSL
 
 You first need to get the latest library from http://www.netlib.org/clapack/.  Then, compile it like
