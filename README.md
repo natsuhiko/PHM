@@ -21,7 +21,7 @@ Pairwise hierarchical model uses QTL signal to map causal interaction between re
 	hm  bf1.gz -v variant_level.gz -f peak_level.gz
 	phm bf2.gz -p posterior_prob.gz -c coef.gz
 
-## Bayes factor preparation
+## Bayes factor calculation
 
 PHM takes Bayes factors of QTL associations.
 
