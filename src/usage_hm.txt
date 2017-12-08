@@ -1,0 +1,32 @@
+phm:
+  Pairwise Hierarchical Model
+  A Bayesian hierarchical model to map causal interactions between regulatory elements in the genome, that incorporates techniques from Mendelian Randomisation
+
+Usage:
+  phm <input file> [OPTIONS]
+
+Input:
+  Output of bayesian regression which consists of
+  paired peak IDs with Regional Bayes factors for 10 hypotheses.
+
+Output:
+  Posterior probability and coefficients for covariates.
+  
+Mandatory arguments:
+
+  -d/--dimension                 <string>  dimension of the binary input file (e.g., 100,3)
+  
+Output options:
+
+  -p/--posterior-probability     <string>  File name of posterior probabilities
+  -c/--coefficient               <string>  File name of coefficients 
+  -b/--binary                              Output as binary files
+
+Other options:
+
+  -t/--n-threads                 <int>     The number of threads used in the E-step
+  -v/--verbose                             Print verbose output (for debugging). 
+
+#  
+# 
+#
