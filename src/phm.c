@@ -1,6 +1,6 @@
 #include "util.h"
 #include "phm.h"
-
+#include "usage.h"
 
 int getPeakwiseAnnot(long* id1, long* id2, double* Z, long nrow, long npeaks, double* p, double* q, double* tss, double* we, long* parent, double* maxparent){
     long pi, i, j, k;
@@ -389,7 +389,6 @@ void emATACMultinom(double* bf, double* X, long N, long P, long LDXT, double* Z,
 
 
 
-void usage();
 
 
 int main(int argc, char** argv){
@@ -397,7 +396,7 @@ int main(int argc, char** argv){
     long i, j, k;
     long info;
     
-    if(argc==1){usage(); return -1;}
+    if(argc==1){usage_phm(); return -1;}
     for(k=0; k<argc; k++){if(strcmp(argv[k],"--verbose")==0 | strcmp(argv[k],"-v")==0){verbose=1;}}
     
     if(verbose>0){
