@@ -14,6 +14,10 @@ To build and install the pairwise hierarchical model, firstly go to the _source_
         make
         make install
 
+## Workflow
+
+![workflow](https://github.com/natsuhiko/Images/blob/master/workflow.png)
+
 ## Bayes factor calculation
 
 PHM takes Bayes factors (BFs) of QTL associations as an input data. Here we describe how to compute BFs from normalised read counts and variant information in VCF format.
