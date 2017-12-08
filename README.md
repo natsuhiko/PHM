@@ -1,4 +1,4 @@
-# Pairwise Hierarchical Model
+# Pairwise Hierarchical Model (Underconstruction)
 A Bayesian hierarchical model to map causal interactions between regulatory elements in the genome, that incorporates techniques from Mendelian Randomisation
 
 ## How to build & install
