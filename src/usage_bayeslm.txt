@@ -1,0 +1,42 @@
+bayeslm:
+  Bayesian linear regression model
+  Computing Bayes factors (BFs) and regional Bayes factors (RBFs)
+
+Usage:
+  bayeslm -g <vcf file> -i <fragment count> -j <peak ID> -p <bed file> [OPTIONS]
+
+Input:
+  VCF file / Normalized fragment counts / peak annotation in BED format
+
+Output:
+  Bayes factors and variant-level annotations.
+  
+Mandatory arguments:
+
+  -g/--vcf                   <string>  VCF file 
+  -i/--fragment-count        <string>  Normalized fragment counts in binary double (e.g., FPKM, TPM, etc.)
+  -j/--feature-id            <int>     Peak ID (row number of the BED file specified below)
+  -p/--peak-bed              <string>  Peak annotation in BED format (should be tabix indexed)
+
+Mapping options:
+
+  -w/--window-size           <int>     cis-window size (default: 1000000)
+
+Prior probability options (used in RBF and lead variant calculation):
+
+  -p1/--variant-level        <string>  Hyperparameters of variant-level prior probability
+  -p2/--peak-level           <string>  Hyperparameters of peak-level prior probability
+  -p3/--peak-pair-level      <string>  Hyperparameters of peak-level prior probability
+
+Output options:
+
+  -o/--output                <string>  Prefix of output files
+  -x/--extend                          Output in an extended format (unable to be used for hm/phm)
+
+Other options:
+
+  -v/--verbose                         Print verbose output in stderr (for debugging).
+
+#  
+# 
+#
