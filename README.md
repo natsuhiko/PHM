@@ -10,13 +10,13 @@ Non sequential input for hm.c.
 
 To build and install the pairwise hierarchical model, firstly go to the _source_ directory (*src*), then set environment variables appropriately to point to the CLAPACK and HTSLIB.  Finally use "make" to build and install *phm* which will be installed in "$PHMDIR/bin".
 
-        PHMDIR=/path/to/phmdir/
-        cd $PHMDIR/src
-        # Not run!  Please export your environment.
-        export CFLAGS="-I/path/to/your/CLAPACK-*.*.*.*/INCLUDE -I/path/to/your/CLAPACK-*.*.*.*/F2CLIBS"
-        export LDFLAGS="-L/path/to/your/CLAPACK-*.*.*.* -L/path/to/your/CLAPACK-*.*.*.*/F2CLIBS"
-        make
-        make install
+	PHMDIR=/path/to/phmdir/
+	cd $PHMDIR/src
+	# Not run!  Please export your environment.
+	export CFLAGS="-I/usr/include -I/path/to/your/CLAPACK-3.*.*.*/INCLUDE -I/nfs/users/nfs_n/nk5/Applications/htslib-1.3"
+	export LDFLAGS="-L/usr/lib -L/path/to/your/htslib-1.* -L/path/to/your/CLAPACK-3.*.*.*"
+	make
+	make install
 
 ## Workflow
 

@@ -1,7 +1,7 @@
 PROGFLAG = -DNIL -DFULLBF -DPEN
 CC=gcc
 CFLAGS := $(CFLAGS) -std=gnu99 -fpic -g -O2
-LDFLAGS := $(LDFLAGS) -llapack -lblas -lm -lz -lhts
+LDFLAGS := $(LDFLAGS) -lgsl -llapack -lblas -lm -lz -lhts
 
 PROGRAM = phm
 HM = hm
