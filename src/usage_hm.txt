@@ -1,31 +1,37 @@
-phm:
-  Pairwise Hierarchical Model
-  A Bayesian hierarchical model to map causal interactions between regulatory elements in the genome, that incorporates techniques from Mendelian Randomisation
+hm:
+  Hierarchical Model
+  Introduced by Veyrieras et al. (2008)
 
 Usage:
-  phm <input file> [OPTIONS]
+  hm -i <input file> -c I,C3,C2,B,N0,N4 -r 126128857 -j ../../Hie1M/gene.exp.quantile.gz -d N4 -f 48325 -v [OPTIONS]
 
 Input:
-  Output of bayesian regression which consists of
-  paired peak IDs with Regional Bayes factors for 10 hypotheses.
+  Association Bayes factors and various annotations
 
 Output:
-  Posterior probability and coefficients for covariates.
+  Hyperparameter estimate for variant-level and peak-level prior probabilities 
   
 Mandatory arguments:
 
-  -d/--dimension                 <string>  dimension of the binary input file (e.g., 100,3)
-  
+  -i/--input                  <string>  Input file (e.g., 100,3)
+  -r/--n-rows                 <int>     Number of rows in input
+  -f/--n-features             <int>     Number of features
+  -c/--col-type               <string>  Column type string (e.g., I,C3,C2,B,N0,N4)
+
+Feature level annotation options:
+
+  -j/--feature-input          <string>  Covariates of feature-level prior probability
+  -d/--col-type-feature       <string>  Column type of feature covariates
+
 Output options:
 
-  -p/--posterior-probability     <string>  File name of posterior probabilities
-  -c/--coefficient               <string>  File name of coefficients 
-  -b/--binary                              Output as binary files
+  -o/--output                 <string>  Output prefix
+  -p/--posterior-probability            Output posterior probabilities
 
 Other options:
 
-  -t/--n-threads                 <int>     The number of threads used in the E-step
-  -v/--verbose                             Print verbose output (for debugging). 
+  -t/--n-threads              <int>     The number of threads used in the E-step
+  -v/--verbose                          Print verbose output (for debugging). 
 
 #  
 # 

@@ -33,6 +33,8 @@ long readTable(gzFile f, double* X, double* bf, char* type, long* nexp, double**
                     if(type[j]=='B'){
                         sscanf(cell, "%lf", bf+i);
                         bf[i] = exp(bf[i]);
+                        if(isnan(bf[i])>0){fprintf(stderr, "Bayes factor is NaN at %ld row.\n", i+1);}
+                        if(isinf(bf[i])>0){fprintf(stderr, "Bayes factor is Inf at %ld row.\n", i+1); bf[i]=exp(500.0);}
                     }else if(type[j]=='O'){
                         sscanf(cell, "%lf", X+i+P*ldx);
                     }else if(type[j]=='N'){
@@ -96,6 +98,7 @@ void dgemvT(double* A, long N, long M, long lda, double* x, double* y){
         y[j] = 0.0;
         for(i=0; i<N; i++){
             y[j] += A[i+j*lda]*x[i];
+            //if(isnan(y[j])>0){fprintf(stderr, "NaN generated in dgevmT at (%ld, %ld)\n", i, j);}
         }
     }
 }
@@ -137,7 +140,7 @@ void* Estep(void *args){
     double* xb; xb = (double*)calloc(P, sizeof(double));
     double* XjTZj; XjTZj = (double*)calloc(P, sizeof(double));
     
-    long j, k, l, l2, pstart = tid*nfeaturesperthread, pend;
+    long j, k, l, l2, pstart = tid*nfeaturesperthread, pend, nanflag=0;;
     pend = ((tid+1)*nfeaturesperthread < nfeatures) ? (tid+1)*nfeaturesperthread : nfeatures;
     for(j=pstart; j<pend; j++){
         //fprintf(stderr, "%d-%d\n", cumloci[j], cumloci[j+1]);
@@ -160,6 +163,7 @@ void* Estep(void *args){
             tot += Pi[j]*pjk[k]*BF[k];
         }
         pmt->lkhd += log(tot);
+        //if(isnan(pmt->lkhd)>0 && nanflag==0){fprintf(stderr, "Likelihood became NaN at j=%ld %lf\n", j, Pi[j]); nanflag=1;}
         Z1[j] = 0.0;
         for(k=cumloci[j]; k<cumloci[j+1]; k++){
             z[k] /= tot;
@@ -182,7 +186,11 @@ void* Estep(void *args){
         clearAs0(XjTZj, P);
         for(k=cumloci[j]; k<cumloci[j+1]; k++){
             // pseudo data ; P+1th vec of X is offset 
-            y[k] = sqrt(w[k])*(eta[k]-X0[P*ldx+k]) + z[k]/sqrt(w[k]);
+            if(w[k]>0.0){
+                y[k] = sqrt(w[k])*(eta[k]-X0[P*ldx+k]) + z[k]/sqrt(w[k]); 
+            }else{
+                y[k] = 0.0;
+            }
             for(l=0; l<P; l++){
                 Xt[k+l*(L+P)] = (X0[k+l*ldx]-xb[l]) * sqrt(w[k]);
                 XjTZj[l]     += (X0[k+l*ldx]-xb[l]) * z[k];
@@ -216,18 +224,19 @@ void Mstep(double* Xt, double* X0, double* R, double* y, double* beta, double* b
     }
     
     // QR decomposition
-    qr(Xt, R, ldx, P, ldx);
+    qr(Xt, R, ldx, P, ldx); //fprintf(stderr, "R=\n"); printM2(R, P, P, P);
     // beta1 <- t(Xt) %*% y
 #ifdef CBLAS
-    cblas_dgemv(CblasColMajor, CblasTrans, ldx, P, 1.0, Xt, ldx, y, 1, 0.0, beta+P, 1);
+    cblas_dgemv(CblasColMajor, CblasTrans, ldx, P, 1.0, Xt, ldx, y, 1, 0.0, beta+P+1, 1); fprintf(stderr, "Xt * y=\n"); printV2(beta+P+1, P);
 #else
-    dgemvT(Xt, ldx, P, ldx, y, beta+P+1);
+    dgemvT(Xt, ldx, P, ldx, y, beta+P+1); //fprintf(stderr, "Xt * y=\n"); printV2(beta+P+1, P);
 #endif
     // beta  <- backsolve(R, beta1)
     BackSolve(R, P, beta+P+1, beta);
     //double th = 15.;
     //for(i=1; i<P; i++){if(beta[i]>th){beta[i]=beta0[i];}else if(beta[i]<(-th)){beta[i]=beta0[i];}}
-    if(Itr<1){for(i=1; i<P; i++){beta[i]=beta_prior[i];}}
+    for(i=0; i<P; i++){if(isnan(beta[i])>0){fprintf(stderr, "beta[%ld] is NaN\n", i);}}
+    if(Itr<1){for(i=0; i<P; i++){beta[i]=beta_prior[i];}}
 }
 
 
@@ -261,7 +270,7 @@ double getQval(double* Z1, double* Pis, double* z, double* pjk, double* BF, long
 }
 
 
-void em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, long Pj, long* cumloci){
+long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, long Pj, long* cumloci, double* beta, double* gamma, double* Pis, double* pjk, double* Z1, double* z, long nthreads, double* plkhd){
     long i, j, k, l, l2;
     
     fprintf(stderr, "em: L=%ld Pi=%ld nfeatures=%ld \n", L, Pi, nfeatures);
@@ -271,7 +280,7 @@ void em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
     //long Pj = 1;
     //double* U; U = (double*)calloc(nfeatures*Pj, sizeof(double)); for(i=0; i<nfeatures; i++){U[i]=1.;}
     
-    long nthreads = 3;
+    
     long tid;
     HIERARCHICAL_MT* pmt; pmt=(HIERARCHICAL_MT*)calloc(nthreads, sizeof(HIERARCHICAL_MT));
     pthread_t* pid;       pid=(pthread_t*)calloc(nthreads, sizeof(pthread_t));
@@ -280,9 +289,9 @@ void em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
     // parameters
     double sigma = 10.;
     double lambda[2] = {5.0, 1.0};
-    double* Pis;  Pis= (double*)calloc(nfeatures, sizeof(double)); for(i=0; i<nfeatures; i++){Pis[i]=0.075;}
-    double* beta; beta  = (double*)calloc((Pi+1)*2, sizeof(double)); // coef length Pi + 1 + working space for another Pi + 1
-    double* gamma;gamma = (double*)calloc((Pj+1)*2, sizeof(double)); // (Pj + 1) x 2
+    //double* Pis;  Pis= (double*)calloc(nfeatures, sizeof(double)); for(i=0; i<nfeatures; i++){Pis[i]=0.075;}
+    //double* beta; beta  = (double*)calloc((Pi+1)*2, sizeof(double)); // coef length Pi + 1 + working space for another Pi + 1
+    //double* gamma;gamma = (double*)calloc((Pj+1)*2, sizeof(double)); // (Pj + 1) x 2
     double  flip=1.0;
     double* beta_old;  beta_old =  (double*)calloc(Pi+1, sizeof(double)); // coef length Pi + working space for another Pi
     double* gamma_old; gamma_old = (double*)calloc(Pj+1, sizeof(double)); // coef length Pi + working space for another Pi
@@ -292,11 +301,11 @@ void em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
     cblas_dcopy(Pi, gamma0, 1, gamma, 1);
     // coproducts
     double* eta;  eta  = (double*)calloc(L, sizeof(double)); // X beta
-    double* Z1;   Z1   = (double*)calloc(nfeatures, sizeof(double)); // 1-Z0j; j=1,...,nfeatures
-    double* z;    z    = (double*)calloc(L, sizeof(double)); // porsterior probs
+    //double* Z1;   Z1   = (double*)calloc(nfeatures, sizeof(double)); // 1-Z0j; j=1,...,nfeatures
+    //double* z;    z    = (double*)calloc(L, sizeof(double)); // porsterior probs
     double* y;    y    = (double*)calloc(L, sizeof(double)); // pseudo data : W^1/2 %*% eta + W^1/2 %*% z
     double* w;    w    = (double*)calloc(L, sizeof(double)); // weights for IRLS : expand(Z1) * pjk
-    double* pjk;  pjk  = (double*)calloc(L, sizeof(double));  // softmax prior
+    //double* pjk;  pjk  = (double*)calloc(L, sizeof(double));  // softmax prior
     double* Xt;   Xt   = (double*)calloc((L+Pi)*Pi, sizeof(double)); // normalized X & replaced by Q
     double* R;    R    = (double*)calloc(Pi*Pi, sizeof(double)); // upper tri
     double* Ie;   Ie   = (double*)calloc(Pi*Pi*nthreads, sizeof(double));
@@ -318,6 +327,7 @@ void em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
     int again=0;
     double lkhd, lkhd1=-1.0e10;
     double qval, qval1=-1.0e10;
+    int conv=0;
     for(itr=0; itr<1000; itr++){
         Itr=itr;
         //############
@@ -347,21 +357,21 @@ void em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
             long pthflag;
             if( (pthflag = pthread_create(pid+tid, NULL, (void*)Estep, (void*)(pmt+tid))) != 0){
                 fprintf(stderr, "Thread not created...aborted.\n");
-                return;
+                return -9999;
             }
         }
         for(tid=0; tid<nthreads; tid++){
             long pthflag;
-            if( (pthflag = pthread_join(pid[tid], NULL)) !=0 ){fprintf(stderr, "Thread not joined...aborted.\n"); return ;};
+            if( (pthflag = pthread_join(pid[tid], NULL)) !=0 ){fprintf(stderr, "Thread not joined...aborted.\n"); return -9999;};
         }
         
         
         lkhd = 0.0;
-        for(tid=0; tid<nthreads; tid++){lkhd += pmt[tid].lkhd;}
+        for(tid=0; tid<nthreads; tid++){lkhd += pmt[tid].lkhd; if(isnan(pmt[tid].lkhd)>0){fprintf(stderr, "Partial likelihood for thread %d is NaN.\n", tid);} }
         qval = getQval(Z1, Pis, z, pjk, BF, L, nfeatures, X0, beta, Pi, U0, gamma, Pj, &lkhd, lambda);
         //fprintf(stderr, "qval=%lf -> %lf\n", qval1, qval);
         fprintf(stderr, "lkhd=%lf -> %lf\n", lkhd1, lkhd);
-        fprintf(stderr, "Current : "); printV2(beta, Pi); printV2(gamma, Pj+1);
+        fprintf(stderr, "Current : "); printV2(beta, Pi+1); printV2(gamma, Pj+1);
         if(isnan(lkhd)>0 || (lkhd1-lkhd>100.0 && again<20)){
             //fprintf(stderr, "  devol!\n");
             fprintf(stderr, "  Before: "); printV2(beta, Pi);
@@ -379,6 +389,7 @@ void em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
             cblas_dcopy(Pj, gamma, 1, gamma_old, 1);
             fprintf(stderr, "Mstep\n");
             if(Pi>0) Mstep(Xt, X0, R, y, beta, beta0, L, Pi, lambda[0]);
+            fprintf(stderr, "beta="); printV2(beta, Pi);
             for(tid=1; tid<nthreads; tid++){for(l=0; l<Pi; l++){for(l2=0; l2<Pi; l2++){Ie[l+l2*Pi]+=Ie[l+l2*Pi+tid*Pi*Pi];}}}
             
             //###############
@@ -398,7 +409,7 @@ void em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
             for(i=0; i<nfeatures; i++){Pis[i]=1./(1.+exp(-Pis[i]));} // Pis <- 1/(1+exp(Pis)))
             
             // terminate
-            if(fabs(lkhd-lkhd1)<1.0e-4 && again==0 && itr>10){break;}
+            if(fabs(lkhd-lkhd1)<1.0e-4 && again==0 && itr>10){conv=1; break;}
             flip = 1.0;
             lkhd1=lkhd;
             again = 0;
@@ -408,53 +419,12 @@ void em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
     //##############
     //# Output
     //##############
-    gzFile postf; postf = gzopen("posterior.gz", "wb6f");
-    gzFile zf;    zf    = gzopen("Z1.gz", "wb6f");
-    gzFile entf;  entf  = gzopen("entropy.gz", "wb6f"); fprintf(stderr, "entp\n");
-    gzFile nplocif; nplocif = gzopen("nploci.gz", "wb6f");
-    //gzFile paraf; paraf = gzopen("param.gz", "wb6f");    
-    FILE* hessf;  hessf  = fopen("ehess.bin", "wb");
-    FILE* hessf2; hessf2 = fopen("ehess2.bin","wb");
-    FILE* pibin;  pibin  = fopen("Pi1.bin",   "wb");
-    // posterior probs & Z1
-    double entp;
-    for(j=0; j<nfeatures; j++){
-        gzprintf(zf, "%lf\n", Z1[j]);
-        entp = 0.0;
-        for(k=cumloci[j]; k<cumloci[j+1]; k++){
-            gzprintf(postf, "%ld\t%lf\t%lf\t%lf\n", j+1, pjk[k], BF[k], z[k]);
-            if(z[k]>0.0 && Z1[j]>0.0){ 
-                entp -= (z[k]/Z1[j]) * log(z[k]/Z1[j]); 
-            }
-        }
-        gzprintf(entf, "%lf\t%ld\t%lf\n", Z1[j], cumloci[j+1]-cumloci[j], entp);
-    }
-    // number of loci that acounts for postth% of posterior prob
-    double postth[]={0.9, 0.95, 0.99};
-    int    nlocij[]={0,0,0};
-    double plocij=0.0;
-    for(j=0; j<nfeatures; j++){
-        qsort(z+cumloci[j], cumloci[j+1]-cumloci[j], sizeof(double), cmpdr);
-        plocij = 0.0;
-        nlocij[0] = nlocij[1] = nlocij[2] = 0;
-        for(k=cumloci[j]; k<cumloci[j+1]; k++){
-            //if(j==1){fprintf(stderr, "%lf ", z[k]/Z1[j]);}
-            if(plocij<postth[0]){nlocij[0]++;}
-            if(plocij<postth[1]){nlocij[1]++;}
-            if(plocij<postth[2]){nlocij[2]++;}
-            plocij += z[k]/Z1[j];
-        }
-        gzprintf(nplocif, "%ld\t%d\t%d\t%d\n", j, nlocij[0], nlocij[1], nlocij[2]);
-    }
     
-    
-    // parameters
-    //gzprintf(paraf, "%lf\t", Pis[0]);
-    //for(j=0; j<Pi-1; j++){ gzprintf(paraf, "%lf\t", beta[j]); }; gzprintf(paraf, "%lf\n", beta[Pi-1]);
-    fwrite(beta, Pi,        sizeof(double), hessf);
-    fwrite(Ie,   Pi*Pi,     sizeof(double), hessf);
-    fwrite(Pis,  nfeatures, sizeof(double), pibin);
-    // hessian for Peak
+    (*plkhd) = lkhd;
+
+    // hessian for beta
+    for(j=0; j<Pi*Pi; j++){beta[Pi+j]=Ie[j];}
+    // hessian for gamma
     clearAs0(IeU, Pj*Pj);
     for(i=0; i<nfeatures; i++){
         double zmp = (Z1[i]-Pis[i]);
@@ -464,15 +434,10 @@ void em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
             }
         }
     }
-    fwrite(gamma, Pj,    sizeof(double), hessf2);
-    fwrite(IeU,   Pj*Pj, sizeof(double), hessf2);
-    //gzclose(paraf);
-    gzclose(postf);
-    gzclose(zf);
-    gzclose(entf);
-    gzclose(nplocif);
-    fclose(hessf);
-    fclose(hessf2);
+    for(j=0; j<Pj*Pj; j++){gamma[Pj+j]=IeU[j];}
+    
+    return (conv==1 ? itr : -itr);
+
 }
 
 long parseCol(char* s, char** type, long** nexp){
@@ -537,6 +502,7 @@ long main(long argc, char** argv){
     
     for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-f")==0){ nfeatures = (long)atoi(argv[i+1]); }}
     for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-r")==0){ nrow = (long)atoi(argv[i+1]); }}
+    
     
     // input for variant level
     for(i=0; i<argc-1; i++){
@@ -626,26 +592,135 @@ long main(long argc, char** argv){
             break;
         }
     }
-    if(fj==NULL){fprintf(stderr, "No covariate for feature level prior probability.\n"); }
+    if(fj==NULL){
+        fprintf(stderr, "No covariate for feature level prior probability.\n"); 
+        Pj = 1;
+        U = (double*)calloc((nfeatures+Pj)*(Pj+1), sizeof(double)); for(j=0; j<nfeatures; j++){U[j]=1.0;}
+    }
+    
+    double* beta; beta  = (double*)calloc((Pi+1)*2+Pi*Pi, sizeof(double)); // coef length Pi + 1 + working space for another Pi + 1
+    double* gamma;gamma = (double*)calloc((Pj+1)*2+Pj*Pj, sizeof(double)); // (Pj + 1) x 2
+    double* Z1;   Z1   = (double*)calloc(nfeatures, sizeof(double)); // 1-Z0j; j=1,...,nfeatures
+    double* z;    z    = (double*)calloc(nrow, sizeof(double)); // porsterior probs
+    double* pjk;  pjk  = (double*)calloc(nrow, sizeof(double));  // softmax prior
+    
+    double* Pis;  Pis= (double*)calloc(nfeatures, sizeof(double)); for(i=0; i<nfeatures; i++){Pis[i]=0.075;}
     
     // Init parameter setting
     beta0 =  (double*)calloc((Pi+1)*2, sizeof(double)); // coef length Pi + 1 + working space for another Pi + 1
     gamma0 = (double*)calloc((Pj+1)*2, sizeof(double)); // (Pj + 1) x 2
-    beta0[0] = -0.768617;
-    beta0[1] =  3.072989;
-    if(Pi>2)beta0[2] = 2.631762;
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--init-variant-level")==0){
+        FILE* fbeta0;
+        fbeta0 = fopen(argv[i+1], "rb");
+        fread(beta0, sizeof(double), Pi, fbeta0);
+        fclose(fbeta0);
+        fprintf(stderr, "Init Beta: "); printV2(beta0, Pi);
+    }}
+    //beta0[0] = -0.768617;
+    //beta0[1] =  3.072989;
+    //if(Pi>2)beta0[2] = 2.631762;
     
-    gamma0[0] = -8.000779;
+    gamma0[0] = -2.6;
+    /*gamma0[0] = -8.000779;
     gamma0[1] = 9.790940;
     gamma0[2] = 145.083555;
     gamma0[3] = 95.627158;
     gamma0[4] = 335.465419;
-    gamma0[5] = 206.714531;
+    gamma0[5] = 206.714531;*/
     
     
-    em(X, bf, nrow, Pi, U, nfeatures, Pj, cumloci);
     
     
+    
+    long nthreads = 1;
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-t")==0){ nthreads = (long)atoi(argv[i+1]); }}
+    
+    double lkhd;
+    long itr;
+    itr = em(X, bf, nrow, Pi, U, nfeatures, Pj, cumloci, beta, gamma, Pis, pjk, Z1, z, nthreads, &lkhd);
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    //##########
+    //# Output #
+    //##########
+    
+    
+    char* prefix;
+    char* ofname;
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-o")==0){ prefix = argv[i+1]; }}
+    ofname = (char*)calloc(strlen(prefix)+100, sizeof(char));
+    
+    // directry exists?
+    struct stat st = {0}; if (stat(prefix, &st) == -1) { mkdir(prefix, 0700); }
+    
+    // log file
+    sprintf(ofname, "%s/log.txt", prefix);
+    FILE* flog;  flog  = fopen(ofname, "wb");
+    fprintf(flog, "Likelihood   : %lf\n", lkhd);
+    fprintf(flog, "N iterations : %ld\n", itr);
+    fprintf(flog, "N threads    : %ld\n", nthreads);
+    fprintf(flog, "Variant-level: "); for(i=0; i<Pi-1; i++){fprintf(flog, "%lf, ", beta[i]);} fprintf(flog, "%lf\n", beta[i]);
+    fprintf(flog, "Feature-level: "); for(i=0; i<Pj-1; i++){fprintf(flog, "%lf, ", gamma[i]);} fprintf(flog, "%lf\n", gamma[i]);
+
+    fclose(flog);
+    
+    sprintf(ofname, "%s/variant_level.bin", prefix);
+    FILE* hessf;  hessf  = fopen(ofname, "wb");
+    sprintf(ofname, "%s/feature_level.bin", prefix);
+    FILE* hessf2; hessf2 = fopen(ofname, "wb");
+    sprintf(ofname, "%s/Pi1.bin", prefix);
+    FILE* pibin;  pibin  = fopen(ofname,   "wb");
+    fwrite(beta,  Pi*(Pi+1), sizeof(double), hessf);
+    fwrite(Pis,   nfeatures, sizeof(double), pibin);
+    fwrite(gamma, Pj*(Pj+1), sizeof(double), hessf2);
+    
+    
+    
+    for(i=0; i<argc; i++){if(strcmp(argv[i], "-p")==0){
+        sprintf(ofname, "%s/pp.gz", prefix);
+        gzFile postf; postf = gzopen(ofname, "wb6f");
+        sprintf(ofname, "%s/Z1.gz", prefix);
+        gzFile zf;    zf    = gzopen(ofname, "wb6f");
+        for(j=0; j<nfeatures; j++){
+            gzprintf(zf, "%lf\n", Z1[j]);
+            for(k=cumloci[j]; k<cumloci[j+1]; k++){
+                gzprintf(postf, "%ld\t%lf\t%lf\t%lf\n", j+1, pjk[k], bf[k], z[k]);
+            }
+        }
+        gzclose(postf);
+        gzclose(zf);
+    }}
+    // number of loci that acounts for postth% of posterior prob
+    for(i=0; i<argc; i++){if(strcmp(argv[i], "--credible-set")==0){
+        sprintf(ofname, "%s/credible_set.gz", prefix);
+        gzFile nplocif; nplocif = gzopen(ofname, "wb6f");
+        double postth[]={0.9, 0.95, 0.99};
+        int    nlocij[]={0,0,0};
+        double plocij=0.0;
+        for(j=0; j<nfeatures; j++){
+            qsort(z+cumloci[j], cumloci[j+1]-cumloci[j], sizeof(double), cmpdr);
+            plocij = 0.0;
+            nlocij[0] = nlocij[1] = nlocij[2] = 0;
+            for(k=cumloci[j]; k<cumloci[j+1]; k++){
+                //if(j==1){fprintf(stderr, "%lf ", z[k]/Z1[j]);}
+                if(plocij<postth[0]){nlocij[0]++;}
+                if(plocij<postth[1]){nlocij[1]++;}
+                if(plocij<postth[2]){nlocij[2]++;}
+                plocij += z[k]/Z1[j];
+            }
+            gzprintf(nplocif, "%ld\t%d\t%d\t%d\n", j+1, nlocij[0], nlocij[1], nlocij[2]);
+        }
+        gzclose(nplocif);
+    }}
     
 }
 

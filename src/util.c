@@ -127,9 +127,9 @@ void softmax(double* eta, double* y, int n){
         y[i] = exp(eta[i] - offs);
         tot += y[i];
     }
-    for(i=0; i<n; i++){
+    if(tot>0.0){for(i=0; i<n; i++){
         y[i] /= tot;
-    }
+    }}else{fprintf(stderr, "total is zero in softmax\n");}
 }
 
 void wsoftmax(double* eta, double* y, double* w, int n){
@@ -318,6 +318,7 @@ void qr(double* A, double* R, long M, long N, long lda){
     long info;
     double* work; work = (double*)calloc(lwork, sizeof(double));
     double* tau;  tau  = (double*)calloc(N,     sizeof(double));
+    //fprintf(stderr, "M=%ld N=%ld lda=%ld lwork=%ld info=%ld\n", M, N, lda, lwork, info);
     dgeqrf_(&M, &N, A, &lda, tau, work, &lwork, &info);
     //fprintf(stderr, "dgeqrf=%d\n", info);
     

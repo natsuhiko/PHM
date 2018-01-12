@@ -19,6 +19,12 @@
 #include <zlib.h>
 #include <math.h>
 
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+
 typedef struct{
         long tid;  // thread id
         //long npeaksperthread;  // number of peaks processed [tid*npeaks ... (tid+1)*npeaks-1]
@@ -53,7 +59,7 @@ typedef struct{
 	double* pphi;
 	long N;
 	long P;
-	long LDXT;
+	long LDX;
 	long H;
 	double* Xt;
 	double* p;

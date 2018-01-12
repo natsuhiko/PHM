@@ -1,0 +1,113 @@
+#include<stdio.h>
+
+void usage_phm(){
+	fprintf(stderr, "phm:\n");
+	fprintf(stderr, "  Pairwise Hierarchical Model\n");
+	fprintf(stderr, "  A Bayesian hierarchical model to map causal interactions between regulatory elements in the genome, that incorporates techniques from Mendelian Randomisation\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Usage:\n");
+	fprintf(stderr, "  phm <input file> [OPTIONS]\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Input:\n");
+	fprintf(stderr, "  Output of bayesian regression which consists of\n");
+	fprintf(stderr, "  paired peak IDs with Regional Bayes factors for 10 hypotheses.\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Output:\n");
+	fprintf(stderr, "  Posterior probability and coefficients for covariates.\n");
+	fprintf(stderr, "  \n");
+	fprintf(stderr, "Mandatory arguments:\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "  -d/--dimension                 <string>  dimension of the binary input file (e.g., 100,3)\n");
+	fprintf(stderr, "  \n");
+	fprintf(stderr, "Output options:\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "  -p/--posterior-probability     <string>  File name of posterior probabilities\n");
+	fprintf(stderr, "  -c/--coefficient               <string>  File name of coefficients \n");
+	fprintf(stderr, "  -b/--binary                              Output as binary files\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Other options:\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "  -t/--n-threads                 <int>     The number of threads used in the E-step\n");
+	fprintf(stderr, "  -v/--verbose                             Print verbose output (for debugging). \n");
+	fprintf(stderr, "\n");
+}
+
+void usage_hm(){
+	fprintf(stderr, "hm:\n");
+	fprintf(stderr, "  Hierarchical Model\n");
+	fprintf(stderr, "  Introduced by Veyrieras et al. (2008)\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Usage:\n");
+	fprintf(stderr, "  hm -i <input file> -c I,C3,C2,B,N0,N4 -r 126128857 -j ../../Hie1M/gene.exp.quantile.gz -d N4 -f 48325 -v [OPTIONS]\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Input:\n");
+	fprintf(stderr, "  Association Bayes factors and various annotations\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Output:\n");
+	fprintf(stderr, "  Hyperparameter estimate for variant-level and peak-level prior probabilities \n");
+	fprintf(stderr, "  \n");
+	fprintf(stderr, "Mandatory arguments:\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "  -i/--input                  <string>  Input file (e.g., 100,3)\n");
+	fprintf(stderr, "  -r/--n-rows                 <int>     Number of rows in input\n");
+	fprintf(stderr, "  -f/--n-features             <int>     Number of features\n");
+	fprintf(stderr, "  -c/--col-type               <string>  Column type string (e.g., I,C3,C2,B,N0,N4)\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Feature level annotation options:\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "  -j/--feature-input          <string>  Covariates of feature-level prior probability\n");
+	fprintf(stderr, "  -d/--col-type-feature       <string>  Column type of feature covariates\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Output options:\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "  -o/--output                 <string>  Output prefix\n");
+	fprintf(stderr, "  -p/--posterior-probability            Output posterior probabilities\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Other options:\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "  -t/--n-threads              <int>     The number of threads used in the E-step\n");
+	fprintf(stderr, "  -v/--verbose                          Print verbose output (for debugging). \n");
+	fprintf(stderr, "\n");
+}
+
+void usage_bayeslm(){
+	fprintf(stderr, "bayeslm:\n");
+	fprintf(stderr, "  Bayesian linear regression model\n");
+	fprintf(stderr, "  Computing Bayes factors (BFs) and regional Bayes factors (RBFs)\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Usage:\n");
+	fprintf(stderr, "  bayeslm -g <vcf file> -i <fragment count> -j <peak ID> -p <bed file> [OPTIONS]\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Input:\n");
+	fprintf(stderr, "  VCF file / Normalized fragment counts / peak annotation in BED format\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Output:\n");
+	fprintf(stderr, "  Bayes factors and variant-level annotations.\n");
+	fprintf(stderr, "  \n");
+	fprintf(stderr, "Mandatory arguments:\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "  -g/--vcf                   <string>  VCF file \n");
+	fprintf(stderr, "  -i/--fragment-count        <string>  Normalized fragment counts in binary double (e.g., FPKM, TPM, etc.)\n");
+	fprintf(stderr, "  -j/--feature-id            <int>     Peak ID (row number of the BED file specified below)\n");
+	fprintf(stderr, "  -p/--peak-bed              <string>  Peak annotation in BED format (should be tabix indexed)\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Mapping options:\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "  -w/--window-size           <int>     cis-window size (default: 1000000)\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Prior probability options (used in RBF and lead variant calculation):\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "  -p1/--variant-level        <string>  Hyperparameters of variant-level prior probability\n");
+	fprintf(stderr, "  -p2/--peak-level           <string>  Hyperparameters of peak-level prior probability\n");
+	fprintf(stderr, "  -p3/--peak-pair-level      <string>  Hyperparameters of peak-level prior probability\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Output options:\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "  -o/--output                <string>  Prefix of output files\n");
+	fprintf(stderr, "  -x/--extend                          Output in an extended format (unable to be used for hm/phm)\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Other options:\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "  -v/--verbose                         Print verbose output in stderr (for debugging).\n");
+	fprintf(stderr, "\n");
+}

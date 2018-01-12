@@ -18,6 +18,10 @@
 #include <zlib.h>
 #include <math.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 double* beta0;
 double* gamma0;
 
