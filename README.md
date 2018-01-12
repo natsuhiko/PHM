@@ -6,14 +6,14 @@ A Bayesian hierarchical model to map causal interactions between regulatory elem
 Non sequential input for hm.c.
 
 ## How to build & install
-**Please make sure HTSlib and CLAPACK are installed in your environment** (if you don't have them, then see below for installation tips).
+**Please make sure GSL, HTSlib and CLAPACK are installed in your environment** (if you don't have them, then see below for installation tips).
 
-To build and install the pairwise hierarchical model, firstly go to the _source_ directory (*src*), then set environment variables appropriately to point to the CLAPACK and HTSLIB.  Finally use "make" to build and install *phm* which will be installed in "$PHMDIR/bin".
+To build and install the pairwise hierarchical model, firstly go to the _source_ directory (*src*), then set environment variables appropriately to point to the GSL, CLAPACK and HTSLIB.  Finally use "make" to build and install *phm* which will be installed in "$PHMDIR/bin".
 
 	PHMDIR=/path/to/phmdir/
 	cd $PHMDIR/src
 	# Not run!  Please export your environment.
-	export CFLAGS="-I/usr/include -I/path/to/your/CLAPACK-3.*.*.*/INCLUDE -I/nfs/users/nfs_n/nk5/Applications/htslib-1.3"
+	export CFLAGS="-I/usr/include -I/path/to/your/CLAPACK-3.*.*.*/INCLUDE -I/path/to/your/htslib-1.*"
 	export LDFLAGS="-L/usr/lib -L/path/to/your/htslib-1.* -L/path/to/your/CLAPACK-3.*.*.*"
 	make
 	make install
