@@ -1,9 +1,5 @@
 # Pairwise Hierarchical Model (Underconstruction)
-A Bayesian hierarchical model to map causal interactions between regulatory elements in the genome, that incorporates techniques from Mendelian Randomisation
-
-## Bugs
-
-Non sequential input for hm.c.
+A Bayesian hierarchical model to map causal interactions between regulatory elements in the genome, that incorporates techniques from Mendelian Randomisation.
 
 ## How to build & install
 **Please make sure GSL, HTSlib and CLAPACK are installed in your environment** (if you don't have them, then see below for installation tips).
@@ -69,3 +65,6 @@ You may also need to obtain GSL (GNU Scientific Library) from http://www.gnu.org
 	make
 	make install
 
+## Todo
+
+Current hm only accepts the ID field to be sequencial and starting from 1. It is not allowed to use, for example, 2,3,4,...(starting from 2) or 1,2,4,...(a gap at 3). 
