@@ -1,6 +1,10 @@
 # Pairwise Hierarchical Model (Underconstruction)
 A Bayesian hierarchical model to map causal interactions between regulatory elements in the genome, that incorporates techniques from Mendelian Randomisation
 
+## Bugs
+
+Non sequential input for hm.c.
+
 ## How to build & install
 **Please make sure HTSlib and CLAPACK are installed in your environment** (if you don't have them, then see below for installation tips).
 
@@ -56,3 +60,12 @@ When it has been done, you will find three archive files in the directory which 
         ln -s blas_LINUX.a libblas.a
 
 before compiling the pairwise hierarchical model.
+
+You may also need to obtain GSL (GNU Scientific Library) from http://www.gnu.org/software/gsl/ (if it is not installed).  Then, compile it like
+
+        tar zxvf gsl-*.*.tar.gz
+        cd gsl-*.*
+        ./configure --prefix=$PWD
+        make
+        make install
+
