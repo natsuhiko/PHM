@@ -1217,8 +1217,10 @@ int lm(int argc, char** argv){
     
     
     int printBF=1;
-    gzFile outBFf; 
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i],"--outputBF")==0){printBF=2; outBFf = gzopen(argv[i+1], "ab6f");}}
+    //gzFile outBFf;
+    //for(i=0; i<argc-1; i++){if(strcmp(argv[i],"--output")==0){printBF=2; outBFf = gzopen(argv[i+1], "ab6f");}}
+    gzFile outf=NULL; 
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i],"--output")==0){outf = gzopen(argv[i+1], "ab6f");}}
     
     double* beta = NULL;
     for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--variant-level")==0){
@@ -1327,7 +1329,7 @@ int lm(int argc, char** argv){
         break;
     }}
     if(verbose>0){fprintf(stderr, "fid=%d fid2=%d fid_bed=%d fid2_bed=%d fid_bed_sta=%d, fid_bed_end", fid, fid2, fid_bed, fid2_bed, fid_bed_sta, fid_bed_end);}
-    if(M==0 && fid2>0){fprintf(stderr, "no paired peak found\n"); return 0;}
+    if(M==0 && fid2>0){fprintf(stderr, "no paired peak found\n"); if(outf!=NULL){gzclose(outf);}; return 0;}
     if(verbose>0){fprintf(stderr, "%d annotation peaks found.\n", npeaks);}
     
     double* ds;
@@ -1428,7 +1430,7 @@ int lm(int argc, char** argv){
         
         af2     = (double*)calloc(nbivars, sizeof(double));
         rsq2    = (double*)calloc(nbivars, sizeof(double));
-        if(nbivars != nbivars2){fprintf(stderr, "Different VCF conposition!\n"); return 1;}
+        if(nbivars != nbivars2){fprintf(stderr, "Different VCF conposition!\n"); if(outf!=NULL){gzclose(outf);}; return 1;}
     }else{
         ds2 = ds;
         samplesize2 = samplesize;
@@ -1478,8 +1480,8 @@ int lm(int argc, char** argv){
         af[j]  = nk_dsum(ds+j*samplesize, samplesize, 1)/2.0/(double)samplesize;
         rsq[j] = nk_var(ds+j*samplesize, ds+j*samplesize, samplesize)/af[j]/(1.0-af[j])/2.0;
         if(beta!=NULL){
-            eta[j] = eta0[j] = (vt[j]==1 ? beta[0] : 0.0); 
-            for(l=0; l<M; l++){ eta[j+(l+1)*nbivars] = (vt[j]==1 ? beta2[0] : 0.0);} // beta2[vt[j]]; }
+            eta[j] = eta0[j] = (vt[j]>0 ? beta[0] : 0.0); 
+            for(l=0; l<M; l++){ eta[j+(l+1)*nbivars] = (vt[j]>0 ? beta2[0] : 0.0);} // beta2[vt[j]]; }
         }
         //fprintf(stderr, "%lf %lf\n", af[j], rsq[j]);
         if(af[j]>maf0 && af[j]<1.0-maf0 && rsq[j]>0.3){
@@ -1544,7 +1546,7 @@ int lm(int argc, char** argv){
             if(maxbf < bf[j]){maxid = j; maxbf=bf[j];}
             ntested++;
             if(printBF>0){
-                if(printBF==1){
+                if(outf==NULL){
                     printf("%d\t%s\t%d\t%s\t%s\t%s\t%lf\t%lf\t%d\t", fid, chr, pos[j], rss[j], ba0[j], ba1[j], af[j], rsq[j], vt[j]);
                     for(k=0; k<M; k++){
                         printf("%d\t",  loccat[j+k*nbivars]);
@@ -1552,27 +1554,19 @@ int lm(int argc, char** argv){
                     }
                     printf("%d\t", loccat[j+k*nbivars]);
                     printf("%lf\t%lf\t%lf\t%lf\t%lf\n", be[j+k*nbivars], se[j+k*nbivars], bf[j+k*nbivars], eta[j+k*nbivars], covs[j]);
-                }else if(printBF==3){// printing prior log odds
-                    printf("%d\t%s\t%d\t%s\t%s\t%s\t%lf\t%lf\t%d", fid, chr, pos[j], rss[j], ba0[j], ba1[j], af[j], rsq[j], vt[j]);
-                    for(k=1; k<2; k++){
-                        //printf("\t%lf", eta[j+k*nbivars]);
-                        printf("\t%lf\t%lf\t%lf\t%lf", bf[j], bf[j+k*nbivars], bfmr[j+k*nbivars], bfmr2[j+k*nbivars]);
-                    }
-                    printf("\n");
                 }else{
-                    gzprintf(outBFf, "%d\t%s\t%d\t%s\t%s\t%s\t%lf\t%lf\t%d\t", fid, chr, pos[j], rss[j], ba0[j], ba1[j], af[j], rsq[j], vt[j]);
+                    gzprintf(outf, "%d\t%s\t%d\t%s\t%s\t%s\t%lf\t%lf\t%d\t", fid, chr, pos[j], rss[j], ba0[j], ba1[j], af[j], rsq[j], vt[j]);
                     for(k=0; k<M; k++){
-                        gzprintf(outBFf, "%d\t",  loccat[j+k*nbivars]);
-                        gzprintf(outBFf, "%lf\t%lf\t%lf\t", be[j+k*nbivars], se[j+k*nbivars], bf[j+k*nbivars]);
+                        gzprintf(outf, "%d\t",  loccat[j+k*nbivars]);
+                        gzprintf(outf, "%lf\t%lf\t%lf\t", be[j+k*nbivars], se[j+k*nbivars], bf[j+k*nbivars]);
                     }
-                    gzprintf(outBFf, "%d\t", loccat[j+k*nbivars]);
-                    gzprintf(outBFf, "%lf\t%lf\t%lf\n", be[j+k*nbivars], se[j+k*nbivars], bf[j+k*nbivars]);
+                    gzprintf(outf, "%d\t", loccat[j+k*nbivars]);
+                    gzprintf(outf, "%lf\t%lf\t%lf\n", be[j+k*nbivars], se[j+k*nbivars], bf[j+k*nbivars]);
                 }
             }
         }
     }
     if(verbose>0) fprintf(stderr, "Done\n");
-    if(printBF==2){gzclose(outBFf);}
     
     // pairwise hierahical model for gwas
     for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--bf2")==0){
@@ -1610,18 +1604,18 @@ int lm(int argc, char** argv){
                 //for(j=0; j<6; j++){printf("\t%lf", log(pp12[j]));}printf("\n");
                 
                 
-                gzFile outf=NULL;
-                for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--output")==0){outf = gzopen(argv[k+1], "ab6f");}}
+                //gzFile outf=NULL;
+                //for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--output")==0){outf = gzopen(argv[k+1], "ab6f");}}
                 if(outf==NULL){
                     printf("%d\t%s\t%d", nrowbf2, pfbf2, fid);
                     for(k=0; k<6; k++){printf("\t%lf", log(pp12[k]));} printf("\n"); 
                 }else{
                     gzprintf(outf, "%d\t%s\t%d", nrowbf2, pfbf2, fid);
                     for(k=0; k<6; k++){gzprintf(outf, "\t%lf", log(pp12[k]));} gzprintf(outf, "\n"); 
-                    gzclose(outf);
                 }
             }
         }
+        if(outf!=NULL){gzclose(outf);}
         return 0;
     }}
     
@@ -1685,15 +1679,15 @@ int lm(int argc, char** argv){
                             
                         double apeakdis = fabs(midp[fid_bed]-midp[fid2_bed+j])/500000.0;
                         
-                        gzFile outf=NULL;
-                        for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--output")==0){outf = gzopen(argv[k+1], "ab6f");}}
+                        //gzFile outf=NULL;
+                        //for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--output")==0){outf = gzopen(argv[k+1], "ab6f");}}
                         if(outf==NULL){
                             printf("%d\t%d\t%lf", fid, fid2+j, apeakdis);
-                            for(k=0; k<10; k++){printf("\t%lf", log(pp13[k]));} printf("\n"); 
+                            for(k=0; k<9; k++){printf("\t% ", log(pp13[k]));} printf("%lf\n", log(pp13[k])); 
                         }else{
                             gzprintf(outf, "%d\t%d\t%lf\t", fid, fid2+j, apeakdis);
                             for(k=0; k<9; k++){gzprintf(outf, "%lf ", log(pp13[k]));} gzprintf(outf, "%lf\n", log(pp13[k])); 
-                            gzclose(outf);
+                            //gzclose(outf);
                         }
                     
                     }
@@ -1703,8 +1697,8 @@ int lm(int argc, char** argv){
                 //pwhmnewataceqtlAllParam(bf+geta, bf+(j+1)*nbivars+geta, eta0+geta, eta+(j+1)*nbivars+geta, Pi1[0], Pi1[j+1], w+geta, nloci, pp13, loccatid+geta, rss+geta, fid2+j);
                 coloc(bf+geta, bf+(j+1)*nbivars+geta, eta0+geta, Pi1[0], Pi1[j+1], w+geta, nloci, pp13);
 
-                gzFile outf=NULL; 
-                for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--output")==0){outf = gzopen(argv[k+1], "ab6f");}}
+                //gzFile outf=NULL; 
+                //for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--output")==0){outf = gzopen(argv[k+1], "ab6f");}}
                 if(outf==NULL){
                     printf("%d\t%d\t", fid, fid2+j);
                     for(k=0; k<5; k++){printf("%lf ", log(pp13[k]));}printf("%lf\n", log(pp13[k]));
@@ -1712,12 +1706,12 @@ int lm(int argc, char** argv){
                     gzprintf(outf, "%d\t%d\t", fid, fid2+j);
                     for(k=0; k<5; k++){gzprintf(outf, "%lf ", log(pp13[k]));}
                     gzprintf(outf, "%lf\n", log(pp13[5]));
-                    gzclose(outf);
+                    //gzclose(outf);
                 }
                 //}
             }
         }
-        if(print_posterior>0){ // pwhmfm() posterior probability estimate using causal inference information
+        /*if(print_posterior>0){ // pwhmfm() posterior probability estimate using causal inference information
             int cis_sta = tss - wsize; if(cis_sta<0){cis_sta=1;}
             int cis_end = tss + wsize;
             double totzj=0.0, totzjnom=0.0;
@@ -1735,8 +1729,8 @@ int lm(int argc, char** argv){
                 }
             }
 
-            gzFile outf=NULL;
-            for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--output")==0){outf = gzopen(argv[k+1], "ab6f");}}
+            //gzFile outf=NULL;
+            //for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--output")==0){outf = gzopen(argv[k+1], "ab6f");}}
             if(outf==NULL){
                 if(1==1){
                     for(k=0; k<nbivars; k++){
@@ -1754,15 +1748,17 @@ int lm(int argc, char** argv){
                             gzprintf(outf, "%d\t%s\t%d\t%s\t%s\t%s\t%lf\t%lf\t%d\t%d\t%lf\t%lf\t%lf\t%lf\n", fid, chr, pos[k], rss[k], ba0[k], ba1[k], af[k], rsq[k], vt[k], loccat[k], be[k], se[k], log(Zj[k]/totzj), log(Zj[k+nbivars]/totzjnom));
                         }
                     }
-                    gzclose(outf);
+                    //gzclose(outf);
                 }else{
                     gzprintf(outf, "%d\t%lf\t%lf\t%lf\n", fid, varloc[0], varloc[1], varloc[2]);
                     //for(i=0; i<nbivars; i++){ if(cis_sta <= pos[i] && pos[i] <= cis_end){gzprintf(outf, "%lf\n", Zj[i]/totzj);} }
-                    gzclose(outf);
+                    //gzclose(outf);
                 }
             }
-        }
+        }*/
     }
+    if(outf!=NULL){ gzclose(outf);}
+    return 0;
 }
 
 

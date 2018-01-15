@@ -227,7 +227,7 @@ void Mstep(double* Xt, double* X0, double* R, double* y, double* beta, double* b
     qr(Xt, R, ldx, P, ldx); //fprintf(stderr, "R=\n"); printM2(R, P, P, P);
     // beta1 <- t(Xt) %*% y
 #ifdef CBLAS
-    cblas_dgemv(CblasColMajor, CblasTrans, ldx, P, 1.0, Xt, ldx, y, 1, 0.0, beta+P+1, 1); fprintf(stderr, "Xt * y=\n"); printV2(beta+P+1, P);
+    cblas_dgemv(CblasColMajor, CblasTrans, ldx, P, 1.0, Xt, ldx, y, 1, 0.0, beta+P+1, 1); if(verbose>0){fprintf(stderr, "Xt * y=\n"); printV2(beta+P+1, P);}
 #else
     dgemvT(Xt, ldx, P, ldx, y, beta+P+1); //fprintf(stderr, "Xt * y=\n"); printV2(beta+P+1, P);
 #endif
@@ -273,9 +273,8 @@ double getQval(double* Z1, double* Pis, double* z, double* pjk, double* BF, long
 long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, long Pj, long* cumloci, double* beta, double* gamma, double* Pis, double* pjk, double* Z1, double* z, long nthreads, double* plkhd){
     long i, j, k, l, l2;
     
-    fprintf(stderr, "em: L=%ld Pi=%ld nfeatures=%ld \n", L, Pi, nfeatures);
-    
-    fprintf(stderr, "Model fitting started...\n\n");
+    if(verbose>0)fprintf(stderr, "Model fitting started...\n\n");
+    if(verbose>0)fprintf(stderr, "em: L=%ld Pi=%ld nfeatures=%ld \n", L, Pi, nfeatures);
     
     //long Pj = 1;
     //double* U; U = (double*)calloc(nfeatures*Pj, sizeof(double)); for(i=0; i<nfeatures; i++){U[i]=1.;}
@@ -309,7 +308,7 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
     double* Xt;   Xt   = (double*)calloc((L+Pi)*Pi, sizeof(double)); // normalized X & replaced by Q
     double* R;    R    = (double*)calloc(Pi*Pi, sizeof(double)); // upper tri
     double* Ie;   Ie   = (double*)calloc(Pi*Pi*nthreads, sizeof(double));
-    fprintf(stderr, "Memory allocated...\n\n");
+    //fprintf(stderr, "Memory allocated...\n\n");
     
     // for peak
     double* Ut;   Ut   = (double*)calloc((nfeatures+Pj)*(Pj+1), sizeof(double)); // model matrix (W^1/2 U, Phi^-1/2)
@@ -370,15 +369,17 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
         for(tid=0; tid<nthreads; tid++){lkhd += pmt[tid].lkhd; if(isnan(pmt[tid].lkhd)>0){fprintf(stderr, "Partial likelihood for thread %d is NaN.\n", tid);} }
         qval = getQval(Z1, Pis, z, pjk, BF, L, nfeatures, X0, beta, Pi, U0, gamma, Pj, &lkhd, lambda);
         //fprintf(stderr, "qval=%lf -> %lf\n", qval1, qval);
-        fprintf(stderr, "lkhd=%lf -> %lf\n", lkhd1, lkhd);
-        fprintf(stderr, "Current : "); printV2(beta, Pi+1); printV2(gamma, Pj+1);
+        if(verbose>0){
+             fprintf(stderr, "lkhd=%lf -> %lf\n", lkhd1, lkhd);
+             fprintf(stderr, "Current : "); printV2(beta, Pi+1); printV2(gamma, Pj+1);
+        }
         if(isnan(lkhd)>0 || (lkhd1-lkhd>100.0 && again<20)){
             //fprintf(stderr, "  devol!\n");
-            fprintf(stderr, "  Before: "); printV2(beta, Pi);
+            if(verbose>0){ fprintf(stderr, "  Before: "); printV2(beta, Pi);}
             for(i=0; i<Pi; i++){ beta[i]  = beta_old[i]  + flip*(beta[i]  - beta_old[i]) /(flip>0.0 ? 10.0 : 1.0); }
             for(i=0; i<Pj; i++){ gamma[i] = gamma_old[i] + flip*(gamma[i] - gamma_old[i])/(flip>0.0 ? 10.0 : 1.0); }
             dgemv(U0, nfeatures, Pj+1, nfeatures+Pj, gamma, Pis); for(i=0; i<nfeatures; i++){Pis[i]=1./(1.+exp(-Pis[i]));}
-            fprintf(stderr, "  After : "); printV2(beta, Pi);
+            if(verbose>0){ fprintf(stderr, "  After : "); printV2(beta, Pi); }
             flip *= (-1.0);
             again++;
         }else{
@@ -387,14 +388,15 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
             //###############
             cblas_dcopy(Pi, beta,  1, beta_old,  1);
             cblas_dcopy(Pj, gamma, 1, gamma_old, 1);
-            fprintf(stderr, "Mstep\n");
+            if(verbose>0)fprintf(stderr, "Mstep in variant level\n");
             if(Pi>0) Mstep(Xt, X0, R, y, beta, beta0, L, Pi, lambda[0]);
-            fprintf(stderr, "beta="); printV2(beta, Pi);
+            if(verbose>0){fprintf(stderr, "beta="); printV2(beta, Pi);}
             for(tid=1; tid<nthreads; tid++){for(l=0; l<Pi; l++){for(l2=0; l2<Pi; l2++){Ie[l+l2*Pi]+=Ie[l+l2*Pi+tid*Pi*Pi];}}}
             
             //###############
             //# Mstep for U #
             //###############
+            if(verbose>0)fprintf(stderr, "Mstep in peak level\n");
             for(i=0; i<nfeatures; i++){
                 y2[i] = (Z1[i]-Pis[i])/sqrt(Pis[i]*(1.-Pis[i]));
                 for(j=0; j<Pj; j++){
@@ -403,8 +405,7 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
                 }
             }
             Mstep(Ut, U0, R2, y2, gamma, gamma0, nfeatures, Pj, lambda[1]);
-            fprintf(stderr, "gamma=");
-            printV2(gamma, Pj);
+            if(verbose>0){fprintf(stderr, "gamma="); printV2(gamma, Pj);}
             dgemv(U0, nfeatures, Pj+1, nfeatures+Pj, gamma, Pis);// Pi <- U %*% gamma // not yet Pi
             for(i=0; i<nfeatures; i++){Pis[i]=1./(1.+exp(-Pis[i]));} // Pis <- 1/(1+exp(Pis)))
             
@@ -475,7 +476,7 @@ long main(long argc, char** argv){
     long i, j, k, l;
    
     if(argc==1){usage_hm(); return 1;} 
-    long verbose = 0; for(i=0; i<argc; i++){if(strcmp(argv[i], "-v")==0){ verbose=1; }}
+    verbose = 0; for(i=0; i<argc; i++){if(strcmp(argv[i], "-v")==0){ verbose=1; }}
     
     gzFile fi = NULL; // i = variant level
     gzFile fj = NULL; // j = feature level
@@ -593,7 +594,7 @@ long main(long argc, char** argv){
         }
     }
     if(fj==NULL){
-        fprintf(stderr, "No covariate for feature level prior probability.\n"); 
+        if(verbose>0)fprintf(stderr, "No covariate for feature level prior probability.\n"); 
         Pj = 1;
         U = (double*)calloc((nfeatures+Pj)*(Pj+1), sizeof(double)); for(j=0; j<nfeatures; j++){U[j]=1.0;}
     }

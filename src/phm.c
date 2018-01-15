@@ -121,7 +121,7 @@ int getPeakwiseAnnot(long* id1, long* id2, double* Z, long nrow, long npeaks, do
         e2[id2[i]] = i+1;
     }
     
-    fprintf(stderr, "%ld %ld %ld %ld\n", f1[6], e1[6], f2[6], e2[6]);
+    if(verbose>0) fprintf(stderr, "f1=%ld e1=%ld f2=%ld e2=%ld\n", f1[6], e1[6], f2[6], e2[6]);
 
     // calculating master/dependent prob
     double pj; // j is QTL
@@ -135,7 +135,7 @@ int getPeakwiseAnnot(long* id1, long* id2, double* Z, long nrow, long npeaks, do
                     q[j] *= (1.0-(Z[i+5*nrow]+Z[i+9*nrow])/pj); // peak k is not a upstream   peak for j | j is QTL
                     p[j+npeaks] += Z[i+7*nrow]/pj;
                     q[j+npeaks] += Z[i+9*nrow]/pj;
-                    if(j==0){fprintf(stderr, "fwd pj=%lf qj=%lf %lf\n", p[j], q[j], Z[i+9*nrow]/pj);}
+                    //if(j==0){fprintf(stderr, "fwd pj=%lf qj=%lf %lf\n", p[j], q[j], Z[i+9*nrow]/pj);}
                     // finding most likely parent
                     if(Z[i+9*nrow] > maxparent[j]){ parent[j] = id2[i]; maxparent[j] = Z[i+9*nrow]; }
                 }
@@ -149,7 +149,7 @@ int getPeakwiseAnnot(long* id1, long* id2, double* Z, long nrow, long npeaks, do
                     q[j] *= (1.0-(Z[i+5*nrow]+Z[i+7*nrow])/pj); // peak k is not a upstream   peak of j | j is QTL
                     p[j+npeaks] += Z[i+9*nrow]/pj;
                     q[j+npeaks] += Z[i+7*nrow]/pj;
-                    if(j==0){fprintf(stderr, "rev pj=%lf qj=%lf %lf\n", p[j], q[j], Z[i+7*nrow]/pj);}
+                    //if(j==0){fprintf(stderr, "rev pj=%lf qj=%lf %lf\n", p[j], q[j], Z[i+7*nrow]/pj);}
                     // finding most likely parent
                     if(Z[i+7*nrow] > maxparent[j]){ parent[j] = id1[i]; maxparent[j] = Z[i+7*nrow]; }
                 }

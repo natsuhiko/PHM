@@ -31,9 +31,11 @@ usage.c:
 	sh makeUsage.sh
 
 
-install:
+install: $(PROGRAM) $(HM) $(BL)
 	mkdir -p ../bin
 	mv phm ../bin
+	mv hm ../bin
+	mv bayeslm ../bin
 
 clean:
 	rm *o
