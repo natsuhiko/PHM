@@ -14,6 +14,15 @@ To build and install the pairwise hierarchical model, firstly go to the _source_
 	make
 	make install
 
+## Getting started
+
+In order to test whether PHM is properly installed, run the test script in the *script* directory. It takes some time (should be less than 1 hour) to map regulatory interactions on chromosome 22 using our ATAC-seq data (see *data* directory).
+
+	bash
+	export PHMDIR=/path/to/phmdir/
+	cd $PHMDIR
+	sh script/test.sh
+
 ## Workflow
 
 ![workflow](https://github.com/natsuhiko/Images/blob/master/workflow.png)
@@ -65,6 +74,6 @@ You may also need to obtain GSL (GNU Scientific Library) from http://www.gnu.org
 	make
 	make install
 
-## Todo
+## Warnings
 
 Current hm only accepts the ID field to be sequencial and starting from 1. It is not allowed to use, for example, 2,3,4,...(starting from 2) or 1,2,4,...(a gap at 3). 
