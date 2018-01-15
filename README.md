@@ -27,9 +27,11 @@ End of the script, you will find the two directories *Stage1* and *Stage2* in th
 
 ## Workflow
 
+### Schematic
+
 ![workflow](https://github.com/natsuhiko/Images/blob/master/workflow.png)
 
-## Bayes factor calculation
+### Bayes factor calculation
 
 PHM takes Bayes factors (BFs) of QTL associations as an input data. Here we describe how to compute BFs from normalised read counts and variant information in VCF format.
 
@@ -41,7 +43,7 @@ Note that the BED file of the peak annotation has to be tabix indexed. The regio
 
 The function provides the regional bayes factors for all peak k (>j) in the cis-window.
 
-## Model fitting
+### Model fitting
 
 Pairwise hierarchical model uses QTL signal to map causal interaction between regulatory elements (hereafter we refer those elemnts as *peaks*). The model employs 2 stage optimisation: the first step is fitting a standard hierarchical model to estimate the variant-level and peak-level prior probabilities under the assumption that peaks are independent; then the second step is fitting the pairwise hierarchical model using the parameter estimate in the first stage. At each model fitting stage, the Bayes factors of genetic associations are required. The next section provides the information. 
 
