@@ -23,7 +23,7 @@ In order to test whether PHM is properly installed, run the test script in the *
 	cd $PHMDIR
 	sh script/test.sh
 
-End of the script, you will find the two directories *Stage1* and *Stage2* in the *data* directory, which contain output files from the pairwise hierarchical model.
+End of the script, you will find the two directories *Stage1* and *Stage2* in the *data* directory, which contain output files of the hierarchical model and pairwise hierarchical model, respectively. The detailed workflow is found below.
 
 ## Workflow
 
