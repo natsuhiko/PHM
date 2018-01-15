@@ -9,7 +9,7 @@ To build and install the pairwise hierarchical model, firstly go to the _source_
 	PHMDIR=/path/to/phmdir/
 	cd $PHMDIR/src
 	# Not run!  Please export your environment.
-	export CFLAGS="-I/usr/include -I/path/to/your/CLAPACK-3.*.*.*/INCLUDE -I/path/to/your/htslib-1.*"
+	export CFLAGS="-I/usr/include -I/path/to/your/htslib-1.* -I/path/to/your/CLAPACK-3.*.*.*/INCLUDE"
 	export LDFLAGS="-L/usr/lib -L/path/to/your/htslib-1.* -L/path/to/your/CLAPACK-3.*.*.*"
 	make
 	make install
