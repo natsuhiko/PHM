@@ -63,6 +63,7 @@ The **-c** option specifies which column of *output_file_bayeslm1.gz* is used as
 | col 2 is |    centered   |   $12 |
 | col 3 is | right-aligned |    $1 |
 
+| Column Type | Description | 
 |:---|:-----------------------------------------|
 | I  | Peak ID                                  |
 | Cn | Categorical variable with *n* levels     |
