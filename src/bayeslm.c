@@ -1166,35 +1166,34 @@ int getNpeaks(double* midp, int n, int a, int b){
 
 int lm(int argc, char** argv){
     
-    double xk[4] = {0.1470588, 0.3823529, 0.6176471, 0.8529412};// for spline
-    
     int i, j;
     
     int verbose=0;
     for(i=0; i<argc; i++){if(strcmp(argv[i], "-v")==0){verbose=1; break;}}
     
-     
+    // VCFs
     const char* fname = NULL;
     const char* fname2 = NULL;
     for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--vcf")==0){fname = fname2 = argv[i+1]; break;}}
     if(fname==NULL){fprintf(stderr, "VCF file is missing.\n"); return 1;}
     for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--vcf2")==0){fname2  = argv[i+1]; break;}}
-    
     if(verbose>0){fprintf(stderr, "VCF : %s %s\n", fname, fname2);};
     
+    
+    
     int tss = 0;
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--feature-center")==0){tss = atoi(argv[i+1]); break;}}
-    if(tss==0){fprintf(stderr, "Feature center is missing.\n"); return 1;}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--window-centre")==0){tss = atoi(argv[i+1]); break;}}
+    if(tss==0){fprintf(stderr, "Window centre is missing.\n"); return 1;}
     
     char* chrom=NULL;
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--chrom")==0){chrom = argv[i+1]; break;}}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--window-chromosome")==0){chrom = argv[i+1]; break;}}
     if(chrom==NULL){fprintf(stderr, "Chromosome is missing.\n"); return 1;}
     
     const char* fnamey  = NULL;
     const char* fnamey2 = NULL;
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--fpkm")==0){fnamey = fnamey2 = argv[i+1]; break;}}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--normalised-count")==0){fnamey = fnamey2 = argv[i+1]; break;}}
     if(fnamey==NULL){fprintf(stderr, "FPKM file is missing.\n"); return 1;}
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--fpkm2")==0){fnamey2 = argv[i+1]; break;}}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--normalised-count2")==0){fnamey2 = argv[i+1]; break;}}
     
     if(verbose>0){fprintf(stderr, "FPKM : %s %s\n", fnamey, fnamey2);};
     
@@ -1297,7 +1296,7 @@ int lm(int argc, char** argv){
     int fid_bed_sta=0;
     double* ph; // relative peak height
     int M=0; // num of peaks for pairewise tests tss < peaks < tss+wsize are tested.
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--peak-bed")==0){
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--feature-bed")==0){
         peakbed=argv[i+1]; 
         char* chrbed;
         npeaks = loadBed(peakbed, reg, &chrbed, &pos1bed, &pos2bed, &ph);
@@ -1329,8 +1328,8 @@ int lm(int argc, char** argv){
         break;
     }}
     if(verbose>0){fprintf(stderr, "fid=%d fid2=%d fid_bed=%d fid2_bed=%d fid_bed_sta=%d, fid_bed_end", fid, fid2, fid_bed, fid2_bed, fid_bed_sta, fid_bed_end);}
-    if(M==0 && fid2>0){fprintf(stderr, "no paired peak found\n"); if(outf!=NULL){gzclose(outf);}; return 0;}
-    if(verbose>0){fprintf(stderr, "%d annotation peaks found.\n", npeaks);}
+    if(M==0 && fid2>0){fprintf(stderr, "no paired features found\n"); if(outf!=NULL){gzclose(outf);}; return 0;}
+    if(verbose>0){fprintf(stderr, "%d annotation features found.\n", npeaks);}
     
     double* ds;
     int nbivars, samplesize;
@@ -1641,6 +1640,8 @@ int lm(int argc, char** argv){
             if(strcmp(fname, fname2)==0){ // same trait
                 if(fid!=fid2+j){
                     if(print_posterior>0){// posterior calculation after fitting
+                        
+                        double xk[4] = {0.1470588, 0.3823529, 0.6176471, 0.8529412};// for spline
                         
                         // prior Psi
                         Psi[0] = 0.0;

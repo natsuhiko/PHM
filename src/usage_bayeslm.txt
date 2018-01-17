@@ -16,10 +16,12 @@ Mandatory arguments:
   -g/--vcf                   <string>  VCF file 
   -i/--fragment-count        <string>  Normalized fragment counts in binary double (e.g., FPKM, TPM, etc.)
   -j/--feature-id            <int>     Peak ID (row number of the BED file specified below)
-  -p/--peak-bed              <string>  Peak annotation in BED format (should be tabix indexed)
+  -p/--peak-bed              <string>  Peak annotation in BED format (must be tabix indexed)
 
 Mapping options:
 
+  -s/--window-chromosome     <int>     Coordinate at which cis-window is centred
+  -c/--window-centre         <int>     Coordinate at which cis-window is centred
   -w/--window-size           <int>     cis-window size (default: 1000000)
 
 Prior probability options (used in RBF and lead variant calculation):
