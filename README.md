@@ -55,7 +55,15 @@ Once you obtained the BFs, you can feed the output file into the hierarnical mod
 		-r 6186092 -f 2219 \
 		-p -o /path/to/your/output_directory_hm
 
-The **-c**
+The **-c** option specifies which column of *output_file_bayeslm1.gz* is used as covariates. 
+
+| I  | Peak ID |
+| Cn | Categorical variable with *n* levels |
+| Nm | Numerical variable with *m* spline basis |
+|    | If *m=0* then it is used as linear |
+| B  | Bayes factors |
+| S  | Skipped and unused in hm |
+
 Note that the BED file of the peak annotation has to be tabix indexed. The regional Bayes factors for PHM also calculated with the parameter esitimate from the hierarchical model.
 
 	bayeslm -g /path/to/your/VCF/file.gz -w 1000000 -j 10 -f /path/to/your/peak.bed.gz -p1 variant_level_prior.gz -p2 peak_level_prior.gz
