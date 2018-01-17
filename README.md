@@ -33,28 +33,29 @@ The mapping procedure is split into two stages to reduce the computational compl
 
 ### 1st stage
 
-The hierarcical model (HM) takes Bayes factors (BFs) of QTL associations as an input data. Here we describe how to compute BFs from normalised read counts and genotype data in a VCF file. The following script *bayeslm1.sh* computes BFs across all variants in the cis-window for each peak.
+The hierarcical model (HM) takes Bayes factors (BFs) of QTL associations as an input data. We first describe how to compute BFs from normalised read counts and genotype data in a VCF file. The following script *bayeslm1.sh* computes BFs across all variants in the cis-window for each peak.
 
 	sh $PHMDIR/script/bayeslm1.sh 1 2219 \
 		/path/to/your/normalized_count.bin \
 		/path/to/your/VCF.tbx.gz \
 		/path/to/your/peak_bed.tbx.gz \
-		/path/to/your/output_file.gz
+		/path/to/your/output_file_bayeslm1.gz
 
-The first 2 arguments (1 and 2219) suggests it computes BFs for all 2,219 peaks on chromosome 22 as a single batch. You can split peaks in to equaly sized bins for parallelise the job. For example,
+The first 2 arguments (1 and 2219) suggests it computes BFs for all 2,219 peaks on chromosome 22 as a single batch. You can split peaks into equaly sized bins for parallelise the job. For example,
 
 	sh $PHMDIR/script/bayeslm1.sh 4 100 ...
 
-to compute the 4th bin with 100 peaks for each bin. The normalized count data can be any quantity at each peak properly normalized so that you can assume normality (e.g., log FPKM, log TPM, quantile normalized value and so on). The file must be formaed as a binary double array. We also provide a simple R script to convert a raw read count table into the specific format we use (see below). The VCF file and the peak annotation files are needed to be tabix indexed. Note that the order of arguments matters.
+to compute the 4th bin with 100 peaks for each bin. The normalized count data can be any quantity at each peak properly normalized so that you can assume normality (e.g., log FPKM, log TPM, quantile normalized value and so on). The file must be formaed as a binary double array. We also provide a simple R script to convert a raw read count table into the specific format we use (see below). The VCF file and the peak annotation files are needed to be tabix indexed. The last argument is the file name of output which is always gzipped. Note that the order of arguments matters for the script.
 
-To fit the hierarnical model from the output of the script, 
+Once you obtained the BFs, you can feed the output file into the hierarnical model to estimate the variant-level and peak-level prior probabilities: 
 
 	$PHMDIR/bin/hm \
-		-i $IN1 \
+		-i /path/to/your/output_file_bayeslm1.gz \
 		-c I,S,S,S,S,S,S,S,C2,C3,S,S,B \
-		-r $R1 -f $NF \
-		-p -o $OUT1
+		-r 6186092 -f 2219 \
+		-p -o /path/to/your/output_directory_hm
 
+The **-c**
 Note that the BED file of the peak annotation has to be tabix indexed. The regional Bayes factors for PHM also calculated with the parameter esitimate from the hierarchical model.
 
 	bayeslm -g /path/to/your/VCF/file.gz -w 1000000 -j 10 -f /path/to/your/peak.bed.gz -p1 variant_level_prior.gz -p2 peak_level_prior.gz
