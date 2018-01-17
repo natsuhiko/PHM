@@ -55,7 +55,7 @@ Once you obtained the BFs, you can feed the output file into the hierarnical mod
 		-r 6186092 -f 2219 \
 		-p -o /path/to/your/output_directory_hm
 
-The **-c** option specifies which column of *output_file_bayeslm1.gz* is used as covariates. 
+The **-c** option specifies which column of *output_file_bayeslm1.gz* is used as input for hm. In this example, the first column is the ID of peaks, the 9th column is variant type as a categorical variable (0=SNP; 1=INDEL; 2=CNV), the 10th column is location of variants as a categorical varialbe (0=outsize peak; 1=inside the focal peak; 2=inside a flanking peak) and the 13th column is BFs. For pairwise hierarchical model. 
 
 | Column Type | Description | 
 |:----:|:-----------------------------------------|
@@ -64,12 +64,6 @@ The **-c** option specifies which column of *output_file_bayeslm1.gz* is used as
 | N*m* | Numerical variable with *m* spline bases. The variable must be scaled in [0,1]. If *m*=0, then the variable is used as a linear predictor. |
 | B    | Bayes factors                            |
 | S    | Skipped and unused in hm                 |
-
-Note that the BED file of the peak annotation has to be tabix indexed. The regional Bayes factors for PHM also calculated with the parameter esitimate from the hierarchical model.
-
-	bayeslm -g /path/to/your/VCF/file.gz -w 1000000 -j 10 -f /path/to/your/peak.bed.gz -p1 variant_level_prior.gz -p2 peak_level_prior.gz
-
-The function provides the regional bayes factors for all peak k (>j) in the cis-window.
 
 ### 2nd stage
 
