@@ -60,9 +60,8 @@ The **-c** option specifies which column of *output_file_bayeslm1.gz* is used as
 | Column Type | Description | 
 |:----:|:-----------------------------------------|
 | I    | Peak ID                                  |
-| C*n* | Categorical variable with *n* levels. If *n* is smaller than the actual number of levels, levels >*n* is treated as level *n*. |
-| N*m* | Numerical variable with *m* spline bases |
-|      | If *m*=0 then it is used as a linear predictor |
+| C*n* | Categorical variable with *n* levels. If *n* is smaller than the actual number of levels, levels >*n* is treated as the level *n*. |
+| N*m* | Numerical variable with *m* spline bases. The variable must be scaled in [0,1]. If *m*=0, then the variable is used as a linear predictor. |
 | B    | Bayes factors                            |
 | S    | Skipped and unused in hm                 |
 
