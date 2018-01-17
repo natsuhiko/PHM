@@ -55,13 +55,13 @@ Once you obtained the BFs, you can feed the output file into the hierarnical mod
 		-r 6186092 -f 2219 \
 		-p -o /path/to/your/output_directory_hm
 
-The **-c** option specifies which column of *output_file_bayeslm1.gz* is used as input for hm. In this example, the first column is the ID of peaks, the 9th column is variant type as a categorical variable (0=SNP; 1=INDEL; 2=CNV), the 10th column is location of variants as a categorical varialbe (0=outsize peak; 1=inside the focal peak; 2=inside a flanking peak) and the 13th column is BFs. For pairwise hierarchical model. 
+The **-c** option specifies which column of *output_file_bayeslm1.gz* is used as input for hm. In this example, the first column is the ID of peaks, the 9th column is variant type as a categorical variable (0=SNP; 1=INDEL; 2=CNV), the 10th column is location of variants as a categorical varialbe (0=outsize peak; 1=inside the focal peak; 2=inside a flanking peak) and the 13th column is BFs. Other columns are ignored in the model fitting. The table below illustrates each column type and its description. *Note that, for pairwise hierarhical model, the above column specification is only vaiable for current implementation.*
 
 | Column Type | Description | 
 |:----:|:-----------------------------------------|
 | I    | Peak ID                                  |
 | C*n* | Categorical variable with *n* levels. If *n* is smaller than the actual number of levels, levels >*n* is treated as the level *n*. |
-| N*m* | Numerical variable with *m* spline bases. The variable must be scaled in [0,1]. If *m*=0, then the variable is used as a linear predictor. |
+| N*m* | Numerical variable with *m* spline bases. The variable must be scaled in [0,1]. If *m*=0, then the variable is used as a linear predictor (not necessarily scaled in this case). |
 | B    | Bayes factors                            |
 | S    | Skipped and unused in hm                 |
 
