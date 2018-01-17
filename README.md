@@ -57,6 +57,12 @@ Once you obtained the BFs, you can feed the output file into the hierarnical mod
 
 The **-c** option specifies which column of *output_file_bayeslm1.gz* is used as covariates. 
 
+| Tables   |      Are      |  Cool |
+|----------|:-------------:|------:|
+| col 1 is |  left-aligned | $1600 |
+| col 2 is |    centered   |   $12 |
+| col 3 is | right-aligned |    $1 |
+
 |:---|:-----------------------------------------|
 | I  | Peak ID                                  |
 | Cn | Categorical variable with *n* levels     |
