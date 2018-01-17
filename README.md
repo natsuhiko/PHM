@@ -23,19 +23,37 @@ In order to test whether PHM is properly installed, run the test script in the *
 	cd $PHMDIR
 	sh script/test.sh
 
-End of the script, you will find the two directories *Stage1* and *Stage2* in the *data* directory, which contain output files of the hierarchical model and pairwise hierarchical model, respectively. The detailed workflow is found below.
+End of the script, you will find the two directories *Stage1* and *Stage2* in the *data* directory, which contain output files of the hierarchical model and pairwise hierarchical model, respectively. The detailed workflow is as follows.
 
 ## Workflow
 
-### Schematic
+The mapping procedure is split into two stages to reduce the computational complexity of parameter estimation.
 
 ![workflow](https://github.com/natsuhiko/Images/blob/master/workflow.png)
 
-### Bayes factor calculation
+### 1st stage
 
-PHM takes Bayes factors (BFs) of QTL associations as an input data. Here we describe how to compute BFs from normalised read counts and variant information in VCF format.
+The hierarcical model (HM) takes Bayes factors (BFs) of QTL associations as an input data. Here we describe how to compute BFs from normalised read counts and genotype data in a VCF file. The following script *bayeslm1.sh* computes BFs across all variants in the cis-window for each peak.
 
-	bayeslm -g /path/to/your/VCF/file.gz -w 1000000 -j 10 -f /path/to/your/peak.bed.gz
+	sh $PHMDIR/script/bayeslm1.sh 1 2219 \
+		/path/to/your/normalized_count.bin \
+		/path/to/your/VCF.tbx.gz \
+		/path/to/your/peak_bed.tbx.gz \
+		/path/to/your/output_file.gz
+
+The first 2 arguments (1 and 2219) suggests it computes BFs for all 2,219 peaks on chromosome 22 as a single batch. You can split peaks in to equaly sized bins for parallelise the job. For example,
+
+	sh $PHMDIR/script/bayeslm1.sh 4 100 ...
+
+to compute the 4th bin with 100 peaks for each bin. The normalized count data can be any quantity at each peak properly normalized so that you can assume normality (e.g., log FPKM, log TPM, quantile normalized value and so on). The file must be formaed as a binary double array. We also provide a simple R script to convert a raw read count table into the specific format we use (see below). The VCF file and the peak annotation files are needed to be tabix indexed. Note that the order of arguments matters.
+
+To fit the hierarnical model from the output of the script, 
+
+	$PHMDIR/bin/hm \
+		-i $IN1 \
+		-c I,S,S,S,S,S,S,S,C2,C3,S,S,B \
+		-r $R1 -f $NF \
+		-p -o $OUT1
 
 Note that the BED file of the peak annotation has to be tabix indexed. The regional Bayes factors for PHM also calculated with the parameter esitimate from the hierarchical model.
 
@@ -43,7 +61,7 @@ Note that the BED file of the peak annotation has to be tabix indexed. The regio
 
 The function provides the regional bayes factors for all peak k (>j) in the cis-window.
 
-### Model fitting
+### 2nd stage
 
 Pairwise hierarchical model uses QTL signal to map causal interaction between regulatory elements (hereafter we refer those elemnts as *peaks*). The model employs 2 stage optimisation: the first step is fitting a standard hierarchical model to estimate the variant-level and peak-level prior probabilities under the assumption that peaks are independent; then the second step is fitting the pairwise hierarchical model using the parameter estimate in the first stage. At each model fitting stage, the Bayes factors of genetic associations are required. The next section provides the information. 
 
