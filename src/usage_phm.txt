@@ -3,7 +3,7 @@ phm:
   A Bayesian hierarchical model to map causal interactions between regulatory elements in the genome, that incorporates techniques from Mendelian Randomisation
 
 Usage:
-  phm <input file> [OPTIONS]
+  phm -i <input file> -c <col type string> -r <N rows> -f <N features> -o <output dir> [OPTIONS]
 
 Input:
   Output of bayesian regression which consists of
@@ -11,22 +11,20 @@ Input:
 
 Output:
   Posterior probability and coefficients for covariates.
-  
+
 Mandatory arguments:
 
-  -d/--dimension                 <string>  dimension of the binary input file (e.g., 100,3)
-  
-Output options:
-
-  -p/--posterior-probability     <string>  File name of posterior probabilities
-  -c/--coefficient               <string>  File name of coefficients 
-  -b/--binary                              Output as binary files
+  -i/--input                  <string>  Input file (e.g., 100,3)
+  -r/--n-rows                 <int>     Number of rows in input
+  -f/--n-features             <int>     Number of features
+  -c/--col-type               <string>  Column type string (e.g., J,K,N4,B10)
+  -o/--output                 <string>  Output directory name
 
 Other options:
 
-  -t/--n-threads                 <int>     The number of threads used in the E-step
-  -v/--verbose                             Print verbose output (for debugging). 
-
+  -t/--n-threads              <int>     The number of threads used in the E-step
+  -v/--verbose                          Print verbose output (for debugging).
+  
 #  
 # 
 #

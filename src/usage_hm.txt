@@ -3,13 +3,13 @@ hm:
   Introduced by Veyrieras et al. (2008)
 
 Usage:
-  hm -i <input file> -c I,C3,C2,B,N0,N4 -r 126128857 -j ../../Hie1M/gene.exp.quantile.gz -d N4 -f 48325 -v [OPTIONS]
+  hm -i <input file> -c <col type string> -r <N rows> -f <N features> -o <output dir> [OPTIONS]
 
 Input:
   Association Bayes factors and various annotations
 
 Output:
-  Hyperparameter estimate for variant-level and peak-level prior probabilities 
+  Hyperparameter estimate for variant-level and feature-level prior probabilities 
   
 Mandatory arguments:
 
@@ -17,6 +17,7 @@ Mandatory arguments:
   -r/--n-rows                 <int>     Number of rows in input
   -f/--n-features             <int>     Number of features
   -c/--col-type               <string>  Column type string (e.g., I,C3,C2,B,N0,N4)
+  -o/--output                 <string>  Output directory name
 
 Feature level annotation options:
 
@@ -25,7 +26,6 @@ Feature level annotation options:
 
 Output options:
 
-  -o/--output                 <string>  Output prefix
   -p/--posterior-probability            Output posterior probabilities
 
 Other options:

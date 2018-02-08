@@ -1166,8 +1166,9 @@ int getNpeaks(double* midp, int n, int a, int b){
 
 int lm(int argc, char** argv){
     
-    int i, j;
+    int i, j, mode=MODE_N;
     
+    // Verbose mode
     int verbose=0;
     for(i=0; i<argc; i++){if(strcmp(argv[i], "-v")==0){verbose=1; break;}}
     
@@ -1179,55 +1180,24 @@ int lm(int argc, char** argv){
     for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--vcf2")==0){fname2  = argv[i+1]; break;}}
     if(verbose>0){fprintf(stderr, "VCF : %s %s\n", fname, fname2);};
     
-    
-    
+    // cis-window
     int tss = 0;
     for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--window-centre")==0){tss = atoi(argv[i+1]); break;}}
     if(tss==0){fprintf(stderr, "Window centre is missing.\n"); return 1;}
-    
     char* chrom=NULL;
     for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--window-chromosome")==0){chrom = argv[i+1]; break;}}
     if(chrom==NULL){fprintf(stderr, "Chromosome is missing.\n"); return 1;}
+    int wsize=500000;
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--window-size")==0){wsize = atoi(argv[i+1])/2; break;}}
     
-    const char* fnamey  = NULL;
-    const char* fnamey2 = NULL;
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--normalised-count")==0){fnamey = fnamey2 = argv[i+1]; break;}}
-    if(fnamey==NULL){fprintf(stderr, "FPKM file is missing.\n"); return 1;}
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--normalised-count2")==0){fnamey2 = argv[i+1]; break;}}
-    
-    if(verbose>0){fprintf(stderr, "FPKM : %s %s\n", fnamey, fnamey2);};
-    
-    int fid = 0;      // start point of fpkm, starting from 1
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--feature-id")==0){fid = atoi(argv[i+1]); break;}}
-    if(fid==0){fprintf(stderr, "Feature ID is missing.\n"); return 1;}
-    int fid2 = 0;      // pair id, starting from 1
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--feature-id2")==0){fid2 = atoi(argv[i+1]); break;}}
-    
-    if(verbose>0){fprintf(stderr, "FID : %d %d\n", fid, fid2);};
-    
-    for(i=0; i<argc; i++){if(strcmp(argv[i], "--pairwise")==0){fprintf(stderr, "OLD PROGRAM!\n"); return 1;}}
-    
-    for(i=0; i<argc; i++){if(strcmp(argv[i], "--bf2")==0){fid2=0;}}
-    
-    double phi0=-1.0;
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--phi0")==0){phi0=(double)atof(argv[i+1]); break;}}
-    double del0=-1.0;
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--del0")==0){del0=(double)atof(argv[i+1]); break;}}
-    
-    
-    int printBF=1;
-    //gzFile outBFf;
-    //for(i=0; i<argc-1; i++){if(strcmp(argv[i],"--output")==0){printBF=2; outBFf = gzopen(argv[i+1], "ab6f");}}
-    gzFile outf=NULL; 
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i],"--output")==0){outf = gzopen(argv[i+1], "ab6f");}}
-    
+    // variant-level prior
     double* beta = NULL;
     for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--variant-level")==0){
         if(verbose>0){fprintf(stderr, "Beta1 : %s\n", argv[i+1]);};
         //int nbeta=gzfdscanf(argv[i+1], &beta);
         int nbeta=bdfscanf1h(argv[i+1], &beta, 10, 0);
         if(verbose>0)printV(beta, nbeta); 
-        printBF=0;
+        mode=MODE_P;
         break;}
     }
     double* beta2 = NULL;
@@ -1240,50 +1210,77 @@ int lm(int argc, char** argv){
     }
     if(beta2 == NULL){beta2 = beta;}
     
-    
-    
-    
-    
-    
-    // fit pairwise model to get posterior prob by solving the causality
-    int print_posterior=0;
+    // peak-pair-level prior
     double* beta_psi;
     double* Psi;
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--psi")==0){
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--feature-pair-level")==0){
+        mode=MODE_PP;
         Psi=(double*)calloc(4, sizeof(double));
-        print_posterior=1;
         if(verbose>0){fprintf(stderr, "Psi1 : %s\n", argv[i+1]);};
         bdfscanf1h(argv[i+1], &beta_psi, 12, 0);
         if(verbose>0){printV(beta_psi, 12);}
         break;}
     }
     
+    // read counts
+    const char* fnamey  = NULL;
+    const char* fnamey2 = NULL;
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--normalised-count")==0){fnamey = fnamey2 = argv[i+1]; break;}}
+    if(fnamey==NULL){fprintf(stderr, "FPKM file is missing.\n"); return 1;}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--normalised-count2")==0){fnamey2 = argv[i+1]; mode=MODE_C; break;}}
+    if(verbose>0){fprintf(stderr, "FPKM : %s %s\n", fnamey, fnamey2);};
     
-    for(i=0; i<argc; i++){if(strcmp(argv[i],"--force-print")==0){printBF=3;}}
     
-    int randomperm=0;
-    for(i=0; i<argc; i++){if(strcmp(argv[i], "-r")==0){randomperm=1; break;}}
     
+    // feature IDs
+    int fid = 0;      // start point of fpkm, starting from 1
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--feature-id")==0){fid = atoi(argv[i+1]); break;}}
+    if(fid==0){fprintf(stderr, "Feature ID is missing.\n"); return 1;}
+    int fid2 = fid+1;      // pair id, starting from 1
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--feature-id2")==0){fid2 = atoi(argv[i+1]); break;}}
+    if(verbose>0){fprintf(stderr, "FID : %d %d\n", fid, fid2);};
+    
+    
+    // GWAS
+    for(i=0; i<argc; i++){if(strcmp(argv[i], "--uk10k")==0){mode=MODE_G;}}
+    
+    // output file name
+    gzFile outf=NULL; 
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i],"--output")==0){outf = gzopen(argv[i+1], "ab6f");}}
+    
+    
+    // 
+    if(tss<1){tss=1;}
+    
+    
+    
+    
+    // region in which variants are used
     char* reg; reg = (char*)calloc(1000, sizeof(char));
-    
-    int wsize=500000;
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--window-size")==0){wsize = atoi(argv[i+1])/2; break;}}
-    
-    int bothsides = strcmp(fname, fname2)==0 ? 0 : 1;
-    
-    //bothsides=1;
-    if(print_posterior>0){ // fit pairwise model to get posterior prob by solving the consality for both sides
-        bothsides=1;
+    int regstart, regend;
+    if(mode==MODE_N){
+        regstart = tss-wsize;
+        regend   = tss+wsize;
+    }else if(mode==MODE_P){
+        regstart = tss-  wsize;
+        regend   = tss+2*wsize;
+    }else if(mode==MODE_C){
+        regstart = tss-2*wsize;
+        regend   = tss+2*wsize;
+    }else if(mode==MODE_G){
+        regstart = tss-wsize;
+        regend   = tss+wsize;
+    }else if(mode==MODE_PP){
+        regstart = tss-2*wsize;
+        regend   = tss+2*wsize;
     }
-    
-    int regstart = (fid2>0 && bothsides==1) ? tss-2*wsize : tss-wsize;
     if(regstart<=0){regstart = 1;}
-    if(tss<0){tss=1;}
+    sprintf(reg, "%s:%d-%d", chrom, regstart, regend);
+    if(verbose>0)fprintf(stderr, "Region=%s\n", reg);
     
-    sprintf(reg, "%s:%d-%d", chrom, regstart, (fid2==0) ? tss+wsize : tss+2*wsize);
     
-    //fprintf(stderr, "reg=%s\n", reg);
     
+    // flanking feature regions
     char* peakbed=NULL;
     int npeaks=0;
     int* pos1bed;
@@ -1313,73 +1310,40 @@ int lm(int argc, char** argv){
             }
             if(pos1bed[j]<tss+wsize){fid_bed_end=j+1;}
         }
-        if(fid2>0){
-            if(bothsides==0){
+        if(mode>0){
+            if(mode==MODE_P){
                 M = fid_bed_end - fid_bed - 1;
                 fid2_bed=fid_bed+1;
-            }else{
+            }else if(mode==MODE_C || mode==MODE_PP){
                 M = fid_bed_end - fid_bed_sta;
                 fid2 -= (fid_bed-fid_bed_sta) + 1;
-                //fid_bed = fid_bed_sta;
                 fid2_bed = fid_bed_sta;
-                if(verbose>0)fprintf(stderr, "fid_bed_sta=%d fid_bed_end=%d fid_bed=%d fid2_bed=%d fid2=%d", fid_bed_sta, fid_bed_end, fid_bed, fid2_bed, fid2);
             }
+            if(verbose>0)fprintf(stderr, "fid_bed_sta=%d fid_bed_end=%d fid_bed=%d fid2_bed=%d fid2=%d", fid_bed_sta, fid_bed_end, fid_bed, fid2_bed, fid2);
         }
         break;
     }}
     if(verbose>0){fprintf(stderr, "fid=%d fid2=%d fid_bed=%d fid2_bed=%d fid_bed_sta=%d, fid_bed_end", fid, fid2, fid_bed, fid2_bed, fid_bed_sta, fid_bed_end);}
-    if(M==0 && fid2>0){fprintf(stderr, "no paired features found\n"); if(outf!=NULL){gzclose(outf);}; return 0;}
+    if(M==0 && mode==MODE_P || mode==MODE_C || mode==MODE_PP){if(verbose>0){fprintf(stderr, "no paired features found\n");} if(outf!=NULL){gzclose(outf);}; return 0;}
     if(verbose>0){fprintf(stderr, "%d annotation features found.\n", npeaks);}
     
-    double* ds;
-    int nbivars, samplesize;
-    char* chr;
-    int* pos;
-    char** ba0;
-    char** ba1;
-    char** rss;
-    int* vt;
+   
     
-    double* work; work=(double*)calloc(9, sizeof(double));
     
-    if(verbose>0){fprintf(stderr, "Loading genotype dose from %s in %s.\n", fname, reg);}
-    getBiVCF(fname, reg, &ds, &samplesize, &nbivars, &chr, &pos, &rss, &ba0, &ba1, &vt);
-    if(verbose>0){fprintf(stderr, "Genotype dose has been successfully loaded from %s in %s (%d x %d).\n", fname, reg, nbivars, samplesize);}
     
-    double maf0 = 0.05;
-    
-    double* af;     af     = (double*)calloc(nbivars, sizeof(double));
-    double* rsq;    rsq    = (double*)calloc(nbivars, sizeof(double));
-    double* bf;     bf     = (double*)calloc(nbivars * (M+1), sizeof(double));
-    double* bfmr;   bfmr   = (double*)calloc(nbivars * (M+1), sizeof(double));
-    double* bfmr2;  bfmr2  = (double*)calloc(nbivars * (M+1), sizeof(double));
-    
-    // posterior prob from pairwise model
-    double* Zj;  Zj  = (double*)calloc(nbivars*2, sizeof(double));
-    //double* Zk;  Zk  = (double*)calloc(nbivars * (M+1), sizeof(double));
-    
-    double* be;     be     = (double*)calloc(nbivars * (M+1), sizeof(double));
-    double* se;     se     = (double*)calloc(nbivars * (M+1), sizeof(double));
-    double* eta;    eta    = (double*)calloc(nbivars * (M+1), sizeof(double));
-    double* eta0;   eta0   = (double*)calloc(nbivars, sizeof(double));
-    double* covs;   covs   = (double*)calloc(nbivars*2, sizeof(double));
+    // feature-level prior
     double* Pi1;    Pi1    = (double*)calloc(M+1, sizeof(double));
     double* Pi1p1;  Pi1p1  = Pi1 + 1;
     double* Pi1_a;  Pi1_a  = (double*)calloc(M+1, sizeof(double)); // not implemented for different trait 2
-    
-    
-    
     for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--feature-level")==0){
         if(verbose>0){fprintf(stderr, "Feature-level prior : %s\n", argv[i+1]);}; 
         int nbeta=bdfscanf1(argv[i+1], Pi1, 1, fid-1);
-        int sameTrait=1;
-        for(j=0; j<argc-1; j++){if(strcmp(argv[j], "--feature-level2")==0){
-            sameTrait=0;
+        for(j=0; j<argc-1; j++){if(strcmp(argv[j], "--feature-level2")==0){// MODE_C
             if(verbose>0){fprintf(stderr, "Feature-level prior (trait 2) : %s\n", argv[j+1]);}; 
             nbeta=bdfscanf1(argv[j+1], Pi1+1, M, fid2-1);
             break;
         }}
-        if(sameTrait==1){ nbeta=bdfscanf1(argv[i+1], Pi1+1, M, fid2-1); }
+        if(mode==MODE_P || mode==MODE_PP){ nbeta=bdfscanf1(argv[i+1], Pi1+1, M, fid2-1); }
         
         // Pi1_a for bothsides==0
         char* regtemp; regtemp = (char*)calloc(100, sizeof(char));
@@ -1396,15 +1360,35 @@ int lm(int argc, char** argv){
             //Pi1_a = nk_mean(Pi1+1, M);
             //return 0;
         }
-        
         break;
     }}
-    
     if(verbose>0)printV(Pi1_a,M+1);
-    //return 0;
     
     
     
+    
+    // loading genotypes from vcf1
+    double* ds;
+    int nbivars, samplesize;
+    char* chr;
+    int* pos;
+    char** ba0;
+    char** ba1;
+    char** rss;
+    int* vt;
+    if(verbose>0){fprintf(stderr, "Loading genotype dose from %s in %s.\n", fname, reg);}
+    getBiVCF(fname, reg, &ds, &samplesize, &nbivars, &chr, &pos, &rss, &ba0, &ba1, &vt);
+    if(verbose>0){fprintf(stderr, "Genotype dose has been successfully loaded from %s in %s (%d x %d).\n", fname, reg, nbivars, samplesize);}
+    
+    double maf0 = 0.05;
+    
+    double* af;     af     = (double*)calloc(nbivars, sizeof(double));
+    double* rsq;    rsq    = (double*)calloc(nbivars, sizeof(double));
+    double* bf;     bf     = (double*)calloc(nbivars * (M+1), sizeof(double));
+    double* bfmr;   bfmr   = (double*)calloc(nbivars * (M+1), sizeof(double));
+    double* bfmr2;  bfmr2  = (double*)calloc(nbivars * (M+1), sizeof(double));
+    
+    // feature-level prior was here
     int*    loccat; loccat = (int*)calloc(nbivars * (M+1), sizeof(int));
     int*    loccatid; loccatid = (int*)calloc(nbivars, sizeof(int)); for(i=0;i<nbivars;i++){loccatid[i]=-1;}
     double* w;      w      = (double*)calloc(nbivars, sizeof(double)); // 1.0: effective loci; 0.0: unused (MAF==0 etc.)
@@ -1418,15 +1402,13 @@ int lm(int argc, char** argv){
     char** ba12;
     char** rss2;
     int* vt2;
-    
     double* af2;
     double* rsq2;
     
-    if(strcmp(fname, fname2)!=0){
+    if(mode==MODE_C){
         if(verbose>0){fprintf(stderr, "Loading genotype dose from %s in %s.\n", fname2, reg);}
         getBiVCF(fname2, reg, &ds2, &samplesize2, &nbivars2, &chr2, &pos2, &rss2, &ba02, &ba12, &vt2);
         if(verbose>0){fprintf(stderr, "Genotype dose has been successfully loaded from %s in %s (%d x %d).\n", fname2, reg, nbivars2, samplesize2);}
-        
         af2     = (double*)calloc(nbivars, sizeof(double));
         rsq2    = (double*)calloc(nbivars, sizeof(double));
         if(nbivars != nbivars2){fprintf(stderr, "Different VCF conposition!\n"); if(outf!=NULL){gzclose(outf);}; return 1;}
@@ -1445,15 +1427,27 @@ int lm(int argc, char** argv){
     }
     if(verbose>0){fprintf(stderr, "\n");}
     
-    // outcome
+    
+    
+    
+    
+    // posterior prob from pairwise model
+    double* Zj;  Zj  = (double*)calloc(nbivars*2, sizeof(double));
+    
+    
+    
+    
+    
+    // loading read counts
     FILE* fy;
     fy = fopen(fnamey, "rb");
     double* y;  y  = (double*)calloc(samplesize, sizeof(double));
-    double* y2;
     fseek(fy, samplesize*(fid-1)*sizeof(double), SEEK_SET);
     int fread_info = fread(y, sizeof(double), samplesize, fy);
+    // loading read counts for paired trait
+    double* y2;
     if(verbose>0){fprintf(stderr, "%d feature fpkms are loaded from %s.\n", samplesize, fnamey);}
-    if(fid2>0){
+    if(mode==MODE_P || mode==MODE_C || mode==MODE_PP){
         FILE* fy2;
         fy2 = fopen(fnamey2, "rb");
         y2 = (double*)calloc(samplesize2 * M, sizeof(double));
@@ -1461,19 +1455,29 @@ int lm(int argc, char** argv){
         fread_info = fread(y2, sizeof(double), samplesize2 * M, fy2);
         if(verbose>0){fprintf(stderr, "%d x %d feature fpkms are loaded from %s.\n", M, samplesize2, fnamey2);}
     }
-    //fprintf(stderr, "%d %d\n", fid, fid2);
     if(verbose>0){fprintf(stderr, "\n");}
     
-    srand((unsigned)(time(NULL)+getpid()));
-    if(randomperm>0){
-        //randomise(y, samplesize);
-    }
+    // randomise y and y2
+    for(i=0; i<argc; i++){if(strcmp(argv[i], "--random-permutation")==0){
+        srand((unsigned)(time(NULL)+getpid()));
+        if(mode==MODE_N || mode==MODE_G){
+            randomise(y, samplesize);
+        }else if(mode==MODE_P || mode==MODE_C || mode==MODE_PP){
+            randomise2(y, y2, M, samplesize);
+        }
+        break;
+    }}
     
+    // computation of BFs
+    double* be;     be     = (double*)calloc(nbivars * (M+1), sizeof(double));
+    double* se;     se     = (double*)calloc(nbivars * (M+1), sizeof(double));
+    double* eta;    eta    = (double*)calloc(nbivars * (M+1), sizeof(double));
+    double* eta0;   eta0   = (double*)calloc(nbivars, sizeof(double));
+    double* covs;   covs   = (double*)calloc(nbivars*2, sizeof(double));
     int k, l, maxid;
     double maxbf = -1.0e10;
     int ntested=0;
     char* fcoverage=NULL; for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--coverage")==0){fcoverage = argv[i+1]; if(verbose>0){fprintf(stderr, "Coverage file: %s\n", fcoverage);}; break;}}
-    //printBF=3;
     if(verbose>0) fprintf(stderr, "Prior calculation...");
     for(j=0; j<nbivars; j++){
         af[j]  = nk_dsum(ds+j*samplesize, samplesize, 1)/2.0/(double)samplesize;
@@ -1518,7 +1522,7 @@ int lm(int argc, char** argv){
             //bf[j] = getLogBF(ds+j*samplesize, y, samplesize, sqrt(10.0), work);
             bf[j] = getLogWABF(ds+j*samplesize, y, samplesize);
             be[j] = getBeta(ds+j*samplesize, y, samplesize, se+j);
-            if(fid2>0){// for pairwise
+            if(mode==MODE_P || mode==MODE_C || mode==MODE_PP){// for pairwise
                 af2[j]  = nk_dsum(ds2+j*samplesize2,       samplesize2, 1)/2.0/(double)samplesize2;
                 rsq2[j] = nk_var( ds2+j*samplesize2, ds2+j*samplesize2, samplesize2)/af2[j]/(1.0-af2[j])/2.0;
                 if(af2[j]>maf0 && af2[j]<1.0-maf0 && rsq2[j]>0.3 && af[j]>maf0 && af[j]<1.0-maf0 && rsq[j]>0.3){
@@ -1544,7 +1548,7 @@ int lm(int argc, char** argv){
             //if(loccatid[j]==106){fprintf(stderr, "%s %d %d %lf\n", rss[j], loccat[j], loccatid[j], w[j]);}
             if(maxbf < bf[j]){maxid = j; maxbf=bf[j];}
             ntested++;
-            if(printBF>0){
+            if(mode==MODE_N){
                 if(outf==NULL){
                     printf("%d\t%s\t%d\t%s\t%s\t%s\t%lf\t%lf\t%d\t", fid, chr, pos[j], rss[j], ba0[j], ba1[j], af[j], rsq[j], vt[j]);
                     for(k=0; k<M; k++){
@@ -1567,8 +1571,8 @@ int lm(int argc, char** argv){
     }
     if(verbose>0) fprintf(stderr, "Done\n");
     
-    // pairwise hierahical model for gwas
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--bf2")==0){
+    // pairwise hierahical model for GWAS
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--uk10k")==0){
         FILE* fbf2list; fbf2list = fopen(argv[i+1], "r");
         char* fbf2; fbf2  = (char*)calloc(1000, sizeof(char));
         
@@ -1622,7 +1626,7 @@ int lm(int argc, char** argv){
     
     
     // pairewise hierahical model for atac & eqtl
-    if(printBF==0 && fid2>0){
+    if(mode==MODE_C || mode==MODE_P || mode==MODE_PP){
         if(verbose>0)fprintf(stderr, "Pairwise model\n");
         double* pp13; pp13 = (double*)calloc(12, sizeof(double));
         for(j=0; j<M; j++){
@@ -1637,9 +1641,9 @@ int lm(int argc, char** argv){
             }
             clearAs0(pp13, 13);
             
-            if(strcmp(fname, fname2)==0){ // same trait
+            if(mode==MODE_P || mode==MODE_PP){ // same trait
                 if(fid!=fid2+j){
-                    if(print_posterior>0){// posterior calculation after fitting
+                    if(mode==MODE_PP){// posterior calculation after fitting
                         
                         double xk[4] = {0.1470588, 0.3823529, 0.6176471, 0.8529412};// for spline
                         
@@ -1669,10 +1673,7 @@ int lm(int argc, char** argv){
                         geta = 0;
                         nloci = nbivars;
                         pwhmfm( bf+geta, bf+(j+1)*nbivars+geta, bfmr+(j+1)*nbivars+geta, bfmr2+(j+1)*nbivars+geta, eta0+geta, eta+geta, eta+(j+1)*nbivars+geta, Pi1[0], Pi1[j+1], w+geta, nloci, Psi, Zj+geta);
-                        
-                        
-                    }else{
-                        
+                    }else if(mode==MODE_P){
                         if(verbose>0){fprintf(stderr, "%lf %lf %lf\n", Pi1[0], Pi1[j+1], Pi1_a[j+1]);}
 
                         
@@ -1680,26 +1681,20 @@ int lm(int argc, char** argv){
                             
                         double apeakdis = fabs(midp[fid_bed]-midp[fid2_bed+j])/500000.0;
                         
-                        //gzFile outf=NULL;
-                        //for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--output")==0){outf = gzopen(argv[k+1], "ab6f");}}
                         if(outf==NULL){
                             printf("%d\t%d\t%lf", fid, fid2+j, apeakdis);
                             for(k=0; k<9; k++){printf("\t% ", log(pp13[k]));} printf("%lf\n", log(pp13[k])); 
                         }else{
                             gzprintf(outf, "%d\t%d\t%lf\t", fid, fid2+j, apeakdis);
                             for(k=0; k<9; k++){gzprintf(outf, "%lf ", log(pp13[k]));} gzprintf(outf, "%lf\n", log(pp13[k])); 
-                            //gzclose(outf);
                         }
                     
                     }
                     
                 }
-            }else{ // different traits (e.g., atac-eqtl)
-                //pwhmnewataceqtlAllParam(bf+geta, bf+(j+1)*nbivars+geta, eta0+geta, eta+(j+1)*nbivars+geta, Pi1[0], Pi1[j+1], w+geta, nloci, pp13, loccatid+geta, rss+geta, fid2+j);
+            }else if(mode==MODE_C){ // different traits (e.g., atac-eqtl)
                 coloc(bf+geta, bf+(j+1)*nbivars+geta, eta0+geta, Pi1[0], Pi1[j+1], w+geta, nloci, pp13);
 
-                //gzFile outf=NULL; 
-                //for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--output")==0){outf = gzopen(argv[k+1], "ab6f");}}
                 if(outf==NULL){
                     printf("%d\t%d\t", fid, fid2+j);
                     for(k=0; k<5; k++){printf("%lf ", log(pp13[k]));}printf("%lf\n", log(pp13[k]));
@@ -1707,12 +1702,10 @@ int lm(int argc, char** argv){
                     gzprintf(outf, "%d\t%d\t", fid, fid2+j);
                     for(k=0; k<5; k++){gzprintf(outf, "%lf ", log(pp13[k]));}
                     gzprintf(outf, "%lf\n", log(pp13[5]));
-                    //gzclose(outf);
                 }
-                //}
             }
         }
-        /*if(print_posterior>0){ // pwhmfm() posterior probability estimate using causal inference information
+        if(mode==MODE_PP){ // pwhmfm() posterior probability estimate using causal inference information
             int cis_sta = tss - wsize; if(cis_sta<0){cis_sta=1;}
             int cis_end = tss + wsize;
             double totzj=0.0, totzjnom=0.0;
@@ -1756,7 +1749,7 @@ int lm(int argc, char** argv){
                     //gzclose(outf);
                 }
             }
-        }*/
+        }
     }
     if(outf!=NULL){ gzclose(outf);}
     return 0;

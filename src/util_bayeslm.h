@@ -6,6 +6,9 @@
 
 void coloc(double* lbfj, double* lbfk, double* eta0, double Pi1_j, double Pi1_k, double* w, int n, double* pp13);
 
+void randomise(double* y, int n);
+void randomise2(double* y, double* y2, int m, int n);
+
 double rk1(double x, double z);
 void rk(double* x0, double* x, double* xk, long n, long nk);
 

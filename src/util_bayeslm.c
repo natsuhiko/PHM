@@ -24,6 +24,81 @@ void rk(double* x0, double* x, double* xk, long n, long nk){
     }
 }
 
+typedef struct{
+    double val;
+    int ord;
+}ORDER;
+
+int compare_ORDER( const void *c1, const void *c2 )
+{
+    ORDER test1 = *(ORDER *)c1;
+    ORDER test2 = *(ORDER *)c2;
+    
+    double tmp1 = test1.val;   /* b を基準とする */
+    double tmp2 = test2.val;
+    
+    if(tmp1-tmp2>0){return 1;}else if(tmp1-tmp2<0){return -1;}else{ return 0;}
+}
+
+void getRandomOrder(int n, int* ord){
+    ORDER* array;
+    int i;
+    //srand((unsigned)(time(NULL)+getpid())); //srand( (unsigned int)time( NULL ) );
+    array=(ORDER*)calloc(n, sizeof(ORDER));
+    for(i=0; i<n; i++){
+        array[i].val=rand();
+        array[i].ord=ord[i];
+        //fprintf(stderr, "%d %lf\n", array[i].ord, array[i].val);
+    }
+    qsort(array, n, sizeof(ORDER), compare_ORDER);
+    for(i=0; i<n; i++){ord[i]=array[i].ord;}
+    free(array);
+}
+
+void randomise(double* y, int n){
+    double* y1;
+    int* ord;
+    int i;
+    ord=(int*)calloc(n, sizeof(int));
+    for(i=0; i<n; i++){ord[i]=i;}
+    y1=(double*)calloc(n, sizeof(double));
+    getRandomOrder(n, ord);
+    for(i=0; i<n; i++){
+        y1[i]=y[ord[i]];
+    }
+    for(i=0; i<n; i++){
+        y[i]=y1[i];
+    }
+    free(y1);
+    free(ord);
+}
+
+void randomise2(double* y, double* y2, int m, int n){
+    double* y1;
+    double* y21;
+    int* ord;
+    int i, j;
+    ord=(int*)calloc(n, sizeof(int));
+    for(i=0; i<n; i++){ord[i]=i;}
+    y1=(double*)calloc(n, sizeof(double));
+    y21=(double*)calloc(n*m, sizeof(double));
+    getRandomOrder(n, ord);
+    for(i=0; i<n; i++){
+        y1[i]=y[ord[i]];
+        for(j=0; j<m; j++){
+            y21[i+j*n]=y2[ord[i]+j*n];
+        }
+    }
+    for(i=0; i<n; i++){
+        y[i]=y1[i];
+        for(j=0; j<m; j++){
+            y2[i+j*n]=y21[i+j*n];
+        }
+    }
+    free(y1);
+    free(ord);
+}
+
 
 
 void expand(int* pos, double* val, int n, int* pos2, double* val2, int n2, double* w){// n < n2

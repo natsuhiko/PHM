@@ -48,5 +48,10 @@ typedef struct{
 }VCF_info;
 
 
+#define MODE_N 0
+#define MODE_P 1
+#define MODE_C 2
+#define MODE_G 3
+#define MODE_PP 4
 
 

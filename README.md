@@ -41,7 +41,7 @@ The hierarcical model (HM) takes Bayes factors (BFs) of QTL associations as an i
 		/path/to/your/peak_bed.tbx.gz \
 		/path/to/your/output_file_bayeslm1.gz
 
-The first 2 arguments (1 and 2219) suggests it computes BFs for all 2,219 peaks on chromosome 22 as a single batch. You can split peaks into equaly sized bins for parallelise the job. For example,
+The first 2 arguments (1 and 2219) suggest it computes BFs for all 2,219 peaks on chromosome 22 as a single batch. You can split peaks into equaly sized bins for parallelise the job. For example,
 
 	sh $PHMDIR/script/bayeslm1.sh 4 100 ...
 
@@ -67,13 +67,36 @@ The **-c** option specifies which column of *output_file_bayeslm1.gz* is used as
 
 ### 2nd stage
 
-Pairwise hierarchical model uses QTL signal to map causal interaction between regulatory elements (hereafter we refer those elemnts as *peaks*). The model employs 2 stage optimisation: the first step is fitting a standard hierarchical model to estimate the variant-level and peak-level prior probabilities under the assumption that peaks are independent; then the second step is fitting the pairwise hierarchical model using the parameter estimate in the first stage. At each model fitting stage, the Bayes factors of genetic associations are required. The next section provides the information. 
+Pairwise hierarchical model takes regional Bayes factors (RBFs) which are calculated by using the first stage parameter estimate. The following script *bayeslm2.sh* computes RBFs for any peak pairs in the cis-window:
 
-	# First stage - standard hierarchical model
-	hm  bf1.gz -v variant_level_prior.gz -f feature_level_prior.gz
+	sh $PHMDIR/script/bayeslm2.sh 1 2219 \
+		/path/to/your/normalized_count.bin \
+		/path/to/your/VCF.tbx.gz \
+		/path/to/your/peak_bed.tbx.gz \
+		/path/to/your/output_directory_hm/variant_level.bin \
+		/path/to/your/output_directory_hm/Pi1.bin \
+		/path/to/your/output_file_bayeslm2.gz
 
-	# Second stage - pairwise hierarchical model
-	phm bf2.gz -p posterior_prob.gz -c coef.gz
+Again, the first 2 arguments suggest the script computes RBFs for all peaks as a single batch. You can parallelise the script as same as before. The 6th and 7th arguments specify the output parameter estimate from the hierarchical model (hm) in the 1st stage. The 8th argument is the output RBFs in gzipped format. 
+
+After computing RBFs, you can fit the pairwise hierarhical model (*phm*) to estimate the peak-pair-level prior probability:
+
+	$PHMDIR/bin/phm \
+		-i /path/to/your/output_file_bayeslm1.gz \
+		-c J,K,N4,B10 \
+		-r 85323 -f 2219 \
+		-o /path/to/your/output_directory_phm
+
+The table below illustrates each column type and its description. 
+
+| Column Type | Description |
+|:----:|:-----------------------------------------|
+| J    | 5' Peak ID                                  |
+| K    | 3' Peak ID                                  |
+| C*n* | Categorical variable with *n* levels. If *n* is smaller than the actual number of levels, levels >*n* is treated as the level *n*. |
+| N*m* | Numerical variable with *m* spline bases. The variable must be scaled in [0,1]. If *m*=0, then the variable is used as a linear predictor (not necessarily scaled in this case). |
+| B10  | Regional Bayes factors                      |
+| S    | Skipped and unused in hm                 |
 
 ## Installation tips for CLAPACK and GSL
 
