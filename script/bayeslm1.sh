@@ -23,11 +23,11 @@ do
 
 	$PHMDIR/bin/bayeslm \
 		--vcf $VCF \
-		--fpkm $FPKM \
-		--peak-bed $PEAK \
+		--normalised-count $FPKM \
+		--feature-bed $PEAK \
 		--feature-id $K \
-		--chrom $1 \
-		--feature-center $PEAKCENTER \
+		--window-chromosome $1 \
+		--window-centre $PEAKCENTER \
 		--window-size 1000000 \
 		--output $OUT
         

@@ -23,18 +23,15 @@ do
 	
 	PEAKCENTER=`expr '(' $2 '+' $3 ')' / 2`
 
-	KP1=`expr $K '+' 1`
-
 	$PHMDIR/bin/bayeslm \
 		--vcf $VCF \
-		--fpkm $FPKM \
-		--peak-bed $PEAK \
+		--normalised-count $FPKM \
+		--feature-bed $PEAK \
 		--feature-id $K \
-		--chrom $1 \
-		--feature-center $PEAKCENTER \
+		--window-chromosome $1 \
+		--window-centre $PEAKCENTER \
 		--window-size 1000000 \
 		--variant-level $VL \
-		--feature-id2 $KP1 \
 		--feature-level $PI1 \
 		--output $OUT
 
