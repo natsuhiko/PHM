@@ -87,7 +87,8 @@ After computing RBFs, you can fit the pairwise hierarhical model (*phm*) to esti
 		-r 85323 -f 2219 \
 		-o /path/to/your/output_directory_phm
 
-The table below illustrates each column type and its description. 
+The **-c** option specifies which column of *output_file_bayeslm2.gz* is used as input for phm. In this example, the first 2 columns are the peak ID for 5' and 3' ends,
+the 3rd column is the peak distance between paired peaks and the 4th column is the RBFs for the 10 different interaction sub-hypotheses (in the space separated format). The table below illustrates each column type and its description. 
 
 | Column Type | Description |
 |:----:|:-----------------------------------------|
@@ -95,8 +96,10 @@ The table below illustrates each column type and its description.
 | K    | 3' Peak ID                                  |
 | C*n* | Categorical variable with *n* levels. If *n* is smaller than the actual number of levels, levels >*n* is treated as the level *n*. |
 | N*m* | Numerical variable with *m* spline bases. The variable must be scaled in [0,1]. If *m*=0, then the variable is used as a linear predictor (not necessarily scaled in this case). |
-| B10  | Regional Bayes factors                      |
-| S    | Skipped and unused in hm                 |
+| B10  | Regional Bayes factors for the 10 interaction sub-hypotheses                |
+| S    | Skipped and unused in phm                 |
+
+As outputs, you will obtain the posterior probability of each interaction hypothesis and the probability of master regulator.
 
 ## Installation tips for CLAPACK and GSL
 
