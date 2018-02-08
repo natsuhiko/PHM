@@ -92,14 +92,35 @@ the 3rd column is the peak distance between paired peaks and the 4th column is t
 
 | Column Type | Description |
 |:----:|:-----------------------------------------|
-| J    | 5' Peak ID                                  |
-| K    | 3' Peak ID                                  |
+| J    | Peak ID at 5' end                                |
+| K    | Peak ID at 3' end                                |
 | C*n* | Categorical variable with *n* levels. If *n* is smaller than the actual number of levels, levels >*n* is treated as the level *n*. |
 | N*m* | Numerical variable with *m* spline bases. The variable must be scaled in [0,1]. If *m*=0, then the variable is used as a linear predictor (not necessarily scaled in this case). |
 | B10  | Regional Bayes factors for the 10 interaction sub-hypotheses                |
 | S    | Skipped and unused in phm                 |
 
-As outputs, you will obtain the posterior probability of each interaction hypothesis and the probability of master regulator.
+As outputs, you will obtain the posterior probability of each interaction hypothesis (pp.gz) and the probability of master regulator (pmr.gz).
+The following shows the column descriptions:
+
+| Column No. | Description (pp.gz) |
+|:----:|:-----------------------------------------|
+| 1    | Peak ID at 5' end                              |
+| 2    | Peak ID at 3' end                              |
+| 3    | Two peaks are not QTL (null) |
+| 4    | 5' Peak is QTL (single) |
+| 5    | 3' Peak is QTL (single) |
+| 6    | Two peaks are indelendent QTLs (linkage) |
+| 7    | Two peaks are in pleiotoropic (pleiotropy) |
+| 8    | 5' peak regulates 3' peak (causality) |
+| 9    | 3' peak regulates 5' peak (causality) |
+
+| Column No. | Description (pmr.gz) |
+|:----:|:-----------------------------------------|
+| 1    | Probability of master regulator (PMR) given that the peak is a QTL |
+| 2    | Expected number of downstream peaks                             |
+| 3    | Expected number of upstream peaks |
+| 4    | Maximum a posteriori parent peak ID |
+| 5    | Posterior probability of causality for the MAP parent |
 
 ## Installation tips for CLAPACK and GSL
 
