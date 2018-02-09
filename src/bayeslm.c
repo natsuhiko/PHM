@@ -1170,29 +1170,29 @@ int lm(int argc, char** argv){
     
     // Verbose mode
     int verbose=0;
-    for(i=0; i<argc; i++){if(strcmp(argv[i], "-v")==0){verbose=1; break;}}
+    for(i=0; i<argc; i++){if(strcmp(argv[i], "--verbose")==0 || strcmp(argv[i], "-v")==0){verbose=1; break;}}
     
     // VCFs
     const char* fname = NULL;
     const char* fname2 = NULL;
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--vcf")==0){fname = fname2 = argv[i+1]; break;}}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--vcf")==0 || strcmp(argv[i], "-g")==0){fname = fname2 = argv[i+1]; break;}}
     if(fname==NULL){fprintf(stderr, "VCF file is missing.\n"); return 1;}
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--vcf2")==0){fname2  = argv[i+1]; break;}}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--vcf2")==0 || strcmp(argv[i], "-g2")==0){fname2  = argv[i+1]; break;}}
     if(verbose>0){fprintf(stderr, "VCF : %s %s\n", fname, fname2);};
     
     // cis-window
     int tss = 0;
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--window-centre")==0){tss = atoi(argv[i+1]); break;}}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--window-centre")==0 || strcmp(argv[i], "-c")==0){tss = atoi(argv[i+1]); break;}}
     if(tss==0){fprintf(stderr, "Window centre is missing.\n"); return 1;}
     char* chrom=NULL;
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--window-chromosome")==0){chrom = argv[i+1]; break;}}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--window-chromosome")==0 || strcmp(argv[i], "-s")==0){chrom = argv[i+1]; break;}}
     if(chrom==NULL){fprintf(stderr, "Chromosome is missing.\n"); return 1;}
     int wsize=500000;
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--window-size")==0){wsize = atoi(argv[i+1])/2; break;}}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--window-size")==0 || strcmp(argv[i], "-w")==0){wsize = atoi(argv[i+1])/2; break;}}
     
     // variant-level prior
     double* beta = NULL;
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--variant-level")==0){
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--variant-level")==0 || strcmp(argv[i], "-p1")==0){
         if(verbose>0){fprintf(stderr, "Beta1 : %s\n", argv[i+1]);};
         //int nbeta=gzfdscanf(argv[i+1], &beta);
         int nbeta=bdfscanf1h(argv[i+1], &beta, 10, 0);
@@ -1201,7 +1201,7 @@ int lm(int argc, char** argv){
         break;}
     }
     double* beta2 = NULL;
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--variant-lavel2")==0){
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--variant-level2")==0){
         if(verbose>0){fprintf(stderr, "Beta2 : %s\n", argv[i+1]);};  
         //int nbeta2=gzfdscanf(argv[i+1], &beta2); 
         int nbeta2=bdfscanf1h(argv[i+1], &beta2, 10, 0); 
@@ -1213,7 +1213,7 @@ int lm(int argc, char** argv){
     // peak-pair-level prior
     double* beta_psi;
     double* Psi;
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--feature-pair-level")==0){
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--feature-pair-level")==0 || strcmp(argv[i], "-p3")==0){
         mode=MODE_PP;
         Psi=(double*)calloc(4, sizeof(double));
         if(verbose>0){fprintf(stderr, "Psi1 : %s\n", argv[i+1]);};
@@ -1225,19 +1225,19 @@ int lm(int argc, char** argv){
     // read counts
     const char* fnamey  = NULL;
     const char* fnamey2 = NULL;
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--normalised-count")==0){fnamey = fnamey2 = argv[i+1]; break;}}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--normalised-count")==0 || strcmp(argv[i], "-i")==0){fnamey = fnamey2 = argv[i+1]; break;}}
     if(fnamey==NULL){fprintf(stderr, "FPKM file is missing.\n"); return 1;}
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--normalised-count2")==0){fnamey2 = argv[i+1]; mode=MODE_C; break;}}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--normalised-count2")==0 || strcmp(argv[i], "-i2")==0){fnamey2 = argv[i+1]; mode=MODE_C; break;}}
     if(verbose>0){fprintf(stderr, "FPKM : %s %s\n", fnamey, fnamey2);};
     
     
     
     // feature IDs
     int fid = 0;      // start point of fpkm, starting from 1
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--feature-id")==0){fid = atoi(argv[i+1]); break;}}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--feature-id")==0 || strcmp(argv[i], "-j")==0){fid = atoi(argv[i+1]); break;}}
     if(fid==0){fprintf(stderr, "Feature ID is missing.\n"); return 1;}
     int fid2 = fid+1;      // pair id, starting from 1
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--feature-id2")==0){fid2 = atoi(argv[i+1]); break;}}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--feature-id2")==0 || strcmp(argv[i], "-j2")==0){fid2 = atoi(argv[i+1]); break;}}
     if(verbose>0){fprintf(stderr, "FID : %d %d\n", fid, fid2);};
     
     
@@ -1246,7 +1246,7 @@ int lm(int argc, char** argv){
     
     // output file name
     gzFile outf=NULL; 
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i],"--output")==0){outf = gzopen(argv[i+1], "ab6f");}}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i],"--output")==0 || strcmp(argv[i], "-o")==0){outf = gzopen(argv[i+1], "ab6f");}}
     
     
     // 
@@ -1293,7 +1293,7 @@ int lm(int argc, char** argv){
     int fid_bed_sta=0;
     double* ph; // relative peak height
     int M=0; // num of peaks for pairewise tests tss < peaks < tss+wsize are tested.
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--feature-bed")==0){
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--feature-bed")==0 || strcmp(argv[i], "-p")==0){
         peakbed=argv[i+1]; 
         char* chrbed;
         npeaks = loadBed(peakbed, reg, &chrbed, &pos1bed, &pos2bed, &ph);
@@ -1335,7 +1335,7 @@ int lm(int argc, char** argv){
     double* Pi1;    Pi1    = (double*)calloc(M+1, sizeof(double));
     double* Pi1p1;  Pi1p1  = Pi1 + 1;
     double* Pi1_a;  Pi1_a  = (double*)calloc(M+1, sizeof(double)); // not implemented for different trait 2
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--feature-level")==0){
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--feature-level")==0 || strcmp(argv[i], "-p2")==0){
         if(verbose>0){fprintf(stderr, "Feature-level prior : %s\n", argv[i+1]);}; 
         int nbeta=bdfscanf1(argv[i+1], Pi1, 1, fid-1);
         for(j=0; j<argc-1; j++){if(strcmp(argv[j], "--feature-level2")==0){// MODE_C
@@ -1458,7 +1458,7 @@ int lm(int argc, char** argv){
     if(verbose>0){fprintf(stderr, "\n");}
     
     // randomise y and y2
-    for(i=0; i<argc; i++){if(strcmp(argv[i], "--random-permutation")==0){
+    for(i=0; i<argc; i++){if(strcmp(argv[i], "--random-permutation")==0 || strcmp(argv[i], "-r")==0){
         srand((unsigned)(time(NULL)+getpid()));
         if(mode==MODE_N || mode==MODE_G){
             randomise(y, samplesize);

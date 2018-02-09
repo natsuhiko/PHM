@@ -13,7 +13,7 @@ Output:
   
 Mandatory arguments:
 
-  -i/--input                  <string>  Input file (e.g., 100,3)
+  -i/--input                  <string>  Input file
   -r/--n-rows                 <int>     Number of rows in input
   -f/--n-features             <int>     Number of features
   -c/--col-type               <string>  Column type string (e.g., I,C3,C2,B,N0,N4)
@@ -27,11 +27,13 @@ Feature level annotation options:
 Output options:
 
   -p/--posterior-probability            Output posterior probabilities
+  --credible-set                        Output the numbers of variants in the credible sets (90%, 95% and 99%)
 
 Other options:
 
   -t/--n-threads              <int>     The number of threads used in the E-step
   -v/--verbose                          Print verbose output (for debugging). 
+  --init-variant-level        <string>  Initial parameter values for the variant-level prior probability
 
 #  
 # 

@@ -476,7 +476,7 @@ long main(long argc, char** argv){
     long i, j, k, l;
    
     if(argc==1){usage_hm(); return 1;} 
-    verbose = 0; for(i=0; i<argc; i++){if(strcmp(argv[i], "-v")==0){ verbose=1; }}
+    verbose = 0; for(i=0; i<argc; i++){if(strcmp(argv[i], "-v")==0 || strcmp(argv[i], "--verbose")==0){ verbose=1; }}
     
     gzFile fi = NULL; // i = variant level
     gzFile fj = NULL; // j = feature level
@@ -501,16 +501,16 @@ long main(long argc, char** argv){
     double* U;
     double* bf;
     
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-f")==0){ nfeatures = (long)atoi(argv[i+1]); }}
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-r")==0){ nrow = (long)atoi(argv[i+1]); }}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-f")==0 || strcmp(argv[i], "--n-features")==0){ nfeatures = (long)atoi(argv[i+1]); }}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-r")==0 || strcmp(argv[i], "--n-rows")==0){ nrow = (long)atoi(argv[i+1]); }}
     
     
     // input for variant level
     for(i=0; i<argc-1; i++){
-        if(strcmp(argv[i], "-i")==0){
+        if(strcmp(argv[i], "-i")==0 || strcmp(argv[i], "--input")==0){
             fi = gzopen(argv[i+1], "rb6f");
             for(j=0; j<argc-1; j++){
-                if(strcmp(argv[j], "-c")==0){
+                if(strcmp(argv[j], "-c")==0 || strcmp(argv[j], "--col-type")==0){
                     pi = parseCol(argv[j+1], &typi, &nxpi);
                     Pi = countP(&typi, &nxpi, pi);
                     Xki = (double**)calloc(pi, sizeof(double*));
@@ -554,10 +554,10 @@ long main(long argc, char** argv){
     
     // input for feature level
     for(i=0; i<argc-1; i++){
-        if(strcmp(argv[i], "-j")==0){
+        if(strcmp(argv[i], "-j")==0 || strcmp(argv[i], "--feature-input")==0){
             fj = gzopen(argv[i+1], "rb6f");
             for(j=0; j<argc-1; j++){
-                if(strcmp(argv[j], "-d")==0){
+                if(strcmp(argv[j], "-d")==0 || strcmp(argv[j], "--col-type-feature")==0){
                     pj = parseCol(argv[j+1], &typj, &nxpj);
                     Pj = countP(&typj, &nxpj, pj)+1;// +1 for intersept
                     Xkj = (double**)calloc(pj, sizeof(double*));
@@ -634,7 +634,7 @@ long main(long argc, char** argv){
     
     
     long nthreads = 1;
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-t")==0){ nthreads = (long)atoi(argv[i+1]); }}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-t")==0 || strcmp(argv[i], "--n-threads")==0){ nthreads = (long)atoi(argv[i+1]); }}
     
     double lkhd;
     long itr;
@@ -657,7 +657,7 @@ long main(long argc, char** argv){
     
     char* prefix;
     char* ofname;
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-o")==0){ prefix = argv[i+1]; }}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-o")==0 || strcmp(argv[i], "--output")==0){ prefix = argv[i+1]; }}
     ofname = (char*)calloc(strlen(prefix)+100, sizeof(char));
     
     // directry exists?
@@ -686,7 +686,7 @@ long main(long argc, char** argv){
     
     
     
-    for(i=0; i<argc; i++){if(strcmp(argv[i], "-p")==0){
+    for(i=0; i<argc; i++){if(strcmp(argv[i], "-p")==0 || strcmp(argv[i], "--posterior-probability")==0){
         sprintf(ofname, "%s/pp.gz", prefix);
         gzFile postf; postf = gzopen(ofname, "wb6f");
         sprintf(ofname, "%s/Z1.gz", prefix);

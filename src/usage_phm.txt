@@ -14,7 +14,7 @@ Output:
 
 Mandatory arguments:
 
-  -i/--input                  <string>  Input file (e.g., 100,3)
+  -i/--input                  <string>  Input file
   -r/--n-rows                 <int>     Number of rows in input
   -f/--n-features             <int>     Number of features
   -c/--col-type               <string>  Column type string (e.g., J,K,N4,B10)

@@ -24,15 +24,17 @@ Mandatory arguments:
 
 Colocalisation options:
 
-  -g2/--vcf2                 <string>  VCF file
-  -i2/--normalised-count2    <string>  Normalized fragment counts in binary double (e.g., FPKM, TPM, etc.)
-  -j2/--feature-id2          <int>     Feture ID for other trait
+  -g2/--vcf2                 <string>  VCF file for the second trait
+  -i2/--normalised-count2    <string>  Normalized fragment counts for the second trait
+  -j2/--feature-id2          <int>     Feture ID for the second trait
 
 Prior probability options (used in RBF and lead variant calculation):
 
   -p1/--variant-level        <string>  Hyperparameters of variant-level prior probability
-  -p2/--peak-level           <string>  Hyperparameters of peak-level prior probability
-  -p3/--peak-pair-level      <string>  Hyperparameters of peak-level prior probability
+  -p2/--feature-level        <string>  Hyperparameters of peak-level prior probability
+  -p3/--feature-pair-level   <string>  Hyperparameters of peak-level prior probability
+  --variant-level2           <string>  Hyperparameters of variant-level prior probability for the second trait
+  --feature-level2           <string>  Hyperparameters of peak-level prior probability for the second trait
 
 Output options:
 
@@ -42,7 +44,7 @@ Output options:
 Other options:
 
   -v/--verbose                         Print verbose output in stderr (for debugging).
-
+  -r/--random-permutation              Permute samples
 #  
 # 
 #
