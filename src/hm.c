@@ -383,9 +383,9 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
             flip *= (-1.0);
             again++;
         }else{
-            //###############
-            //# Mstep for X #
-            //###############
+            //###########################
+            //# Mstep for variant level #
+            //###########################
             cblas_dcopy(Pi, beta,  1, beta_old,  1);
             cblas_dcopy(Pj, gamma, 1, gamma_old, 1);
             if(verbose>0)fprintf(stderr, "Mstep in variant level\n");
@@ -393,9 +393,9 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
             if(verbose>0){fprintf(stderr, "beta="); printV2(beta, Pi);}
             for(tid=1; tid<nthreads; tid++){for(l=0; l<Pi; l++){for(l2=0; l2<Pi; l2++){Ie[l+l2*Pi]+=Ie[l+l2*Pi+tid*Pi*Pi];}}}
             
-            //###############
-            //# Mstep for U #
-            //###############
+            //###########################
+            //# Mstep for feature level #
+            //###########################
             if(verbose>0)fprintf(stderr, "Mstep in peak level\n");
             for(i=0; i<nfeatures; i++){
                 y2[i] = (Z1[i]-Pis[i])/sqrt(Pis[i]*(1.-Pis[i]));

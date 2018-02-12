@@ -21,7 +21,7 @@ do
         IFS=';'
         set -- $I
 	
-	PEAKCENTER=`expr '(' $2 '+' $3 ')' / 2`
+	PEAKCENTRE=`expr '(' $2 '+' $3 ')' / 2`
 
 	$PHMDIR/bin/bayeslm \
 		--vcf $VCF \
@@ -29,7 +29,7 @@ do
 		--feature-bed $PEAK \
 		--feature-id $K \
 		--window-chromosome $1 \
-		--window-centre $PEAKCENTER \
+		--window-centre $PEAKCENTRE \
 		--window-size 1000000 \
 		--variant-level $VL \
 		--feature-level $PI1 \

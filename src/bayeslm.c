@@ -1152,11 +1152,11 @@ int getBiVCF(const char* fname, const char* reg, double** pds1, int* psamplesize
     
 }
 
-int getNpeaks(double* midp, int n, int a, int b){
+int getNpeaks(int* pcents, int n, int a, int b){
     int i;
     int res=0;
     for(i=0; i<n; i++){
-        if(midp[i]>(double)a & midp[i]<(double)b){res++;}
+        if(pcents[i]>a & pcents[i]<b){res++;}
     }
     return res;
 }
@@ -1286,7 +1286,7 @@ int lm(int argc, char** argv){
     int* pos1bed;
     int* pos2bed;
     int* pcents;
-    double* midp;
+    //double* midp;
     int fid_bed=-1;
     int fid2_bed=0;
     int fid_bed_end=0;// end + 1
@@ -1298,10 +1298,10 @@ int lm(int argc, char** argv){
         char* chrbed;
         npeaks = loadBed(peakbed, reg, &chrbed, &pos1bed, &pos2bed, &ph);
         pcents = (int*)calloc(npeaks, sizeof(int));
-        midp   = (double*)calloc(npeaks, sizeof(double));
+        //midp   = (double*)calloc(npeaks, sizeof(double));
         for(j=0; j<npeaks; j++){
             pcents[j] = (pos1bed[j]+pos2bed[j])/2;
-            midp[j] = ((double)pos1bed[j]+(double)pos2bed[j])/2.0;
+            //midp[j] = ((double)pos1bed[j]+(double)pos2bed[j])/2.0;
             if(pos2bed[j]<tss-wsize){fid_bed_sta=j+1;}
             if(pos1bed[j]<=tss && tss<=pos2bed[j]){// target peak
                 fid_bed = j;
@@ -1348,12 +1348,12 @@ int lm(int argc, char** argv){
         // Pi1_a for bothsides==0
         char* regtemp; regtemp = (char*)calloc(100, sizeof(char));
         sprintf(regtemp, "%s:%d-%d", chrom, tss-wsize, tss); // n of peaks on the 500Kb left hand side from peak j including j
-        int np0 = getNpeaks(midp, npeaks, tss-wsize, tss+2); //nrowBed(peakbed, regtemp);
+        int np0 = getNpeaks(pcents, npeaks, tss-wsize, tss+2); //nrowBed(peakbed, regtemp);
         int np2;
         for(j=0; j<M; j++){
             //sprintf(regtemp, "%s:%d-%d", chrom, tss-wsize, (int)(midp[fid2_bed+j])+wsize); // n of peaks on the 500Kb right hand side from peak k including k
             //fprintf(stderr, "%d %s fid2=%d j=%d %lf \n", fid2_bed, regtemp, fid2_bed, j, midp[fid2_bed+j]+wsize);
-            np2 = getNpeaks(midp, npeaks, tss-wsize, (int)(midp[fid2_bed+j])+wsize); //nrowBed(peakbed, regtemp);
+            np2 = getNpeaks(pcents, npeaks, tss-wsize, pcents[fid2_bed+j]+wsize); //nrowBed(peakbed, regtemp);
             Pi1_a[j+1] = (bdfsum(argv[i+1], np2, fid-np0) - Pi1[0] - Pi1[j+1])/((double)(np2-2));
             if(isnan(Pi1_a[j+1])>0 || Pi1_a[j+1]<0.0 || Pi1_a[j+1]>1.0){Pi1_a[j+1] = 1e-20;}
             //fprintf(stderr, "%d %d %d \n", j+1, np2, fid-np0);
@@ -1653,7 +1653,7 @@ int lm(int argc, char** argv){
                         Psi[2] = beta_psi[6];
                         Psi[3] = beta_psi[6];
                         
-                        double apeakdis = fabs(midp[fid_bed]-midp[fid2_bed+j])/500000.0;
+                        double apeakdis = ((double)abs(pcents[fid_bed]-pcents[fid2_bed+j]))/500000.0;
                         
                         Psi[1] += apeakdis*beta_psi[1];
                         Psi[2] += apeakdis*beta_psi[7];
@@ -1679,7 +1679,7 @@ int lm(int argc, char** argv){
                         
                         pwhmnew(bf+geta, bf+(j+1)*nbivars+geta, bfmr+(j+1)*nbivars+geta, bfmr2+(j+1)*nbivars+geta, eta0+geta, eta+geta, eta+(j+1)*nbivars+geta, Pi1[0], Pi1[j+1], Pi1_a[j+1], w+geta, nloci, pp13, loccatid+geta);
                             
-                        double apeakdis = fabs(midp[fid_bed]-midp[fid2_bed+j])/500000.0;
+                        double apeakdis = ((double)abs(pcents[fid_bed]-pcents[fid2_bed+j]))/500000.0;
                         
                         if(outf==NULL){
                             printf("%d\t%d\t%lf", fid, fid2+j, apeakdis);
