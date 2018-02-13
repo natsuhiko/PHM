@@ -513,12 +513,12 @@ int emColoc(double* bf, double* Z, long nrow, double* z1){
                 }
             }
         }
-        psi = (z1[4]+z1[5])/(z1[0]+z1[1]+z1[2]+z1[3]+z1[4]+z1[5]);
-        del = z1[5]/(z1[4]+z1[5]);
-        if(isnan(psi)>0 || isnan(del)>0){printV2(z1, 6); fprintf(stderr, "Parameters become NaN!\n"); break;}
-        fprintf(stderr, "[%ld] lkhd=%lf psi=%lf delta=%lf\n", itr, lkhd, psi, del);
+        psi = (z1[4]+z1[5]+1.)/(z1[0]+z1[1]+z1[2]+z1[3]+z1[4]+z1[5]+100.);
+        del = (z1[5]+10.)/(z1[4]+z1[5]+100.);
+        if(isnan(psi)>0 || isnan(del)>0){printV2(z1, 6); fprintf(stderr, "Parameters became NaN!\n"); break;}
+        if(verbose>0){ fprintf(stderr, "[%ld] lkhd=%lf psi=%lf delta=%lf\n", itr, lkhd, psi, del); }
         if(lkhd>lkhd0 && fabs(lkhd-lkhd0)<1.0e-6){
-            fprintf(stderr, "Finished\n");
+            if(verbose>0){ fprintf(stderr, "Model fitting finished.\n"); }
             break;
         }else{
             lkhd0 = lkhd;
@@ -626,9 +626,9 @@ int main(int argc, char** argv){
                 for(j=0; j<nrow; j++){
                     //X[0*ldx + j] = 1.0;
                 }
-                fprintf(stderr, "Loading data...");
+                if(verbose>0){fprintf(stderr, "Loading data...");}
                 readTable(fi, NULL, bf, typi, nxpi, Xki, Bsi, nrow, pi, id1, id2, cumcoli, 0, 100.0);
-                fprintf(stderr, "Done.\n\n");
+                if(verbose>0){fprintf(stderr, "Done.\n\n");}
             }
             break;
         }

@@ -1156,7 +1156,7 @@ int getNpeaks(int* pcents, int n, int a, int b){
     int i;
     int res=0;
     for(i=0; i<n; i++){
-        if(pcents[i]>a & pcents[i]<b){res++;}
+        if(pcents[i]>a && pcents[i]<b){res++;}
     }
     return res;
 }
@@ -1302,13 +1302,13 @@ int lm(int argc, char** argv){
         for(j=0; j<npeaks; j++){
             pcents[j] = (pos1bed[j]+pos2bed[j])/2;
             //midp[j] = ((double)pos1bed[j]+(double)pos2bed[j])/2.0;
-            if(pos2bed[j]<tss-wsize){fid_bed_sta=j+1;}
+            if(pcents[j]<tss-wsize){ fid_bed_sta=j+1; } // fprintf(stderr, "%d %d %d", fid_bed_sta, pcents[j], tss-wsize);}
+            if(pcents[j]<tss+wsize){ fid_bed_end=j+1; }
             if(pos1bed[j]<=tss && tss<=pos2bed[j]){// target peak
                 fid_bed = j;
             }else if(pos2bed[j]<tss){
                 fid_bed = j;
             }
-            if(pos1bed[j]<tss+wsize){fid_bed_end=j+1;}
         }
         if(mode>0){
             if(mode==MODE_P){
@@ -1316,15 +1316,16 @@ int lm(int argc, char** argv){
                 fid2_bed=fid_bed+1;
             }else if(mode==MODE_C || mode==MODE_PP){
                 M = fid_bed_end - fid_bed_sta;
-                fid2 -= (fid_bed-fid_bed_sta) + 1;
+                //fid2 -= (fid_bed-fid_bed_sta) + 1;
                 fid2_bed = fid_bed_sta;
             }
-            if(verbose>0)fprintf(stderr, "fid_bed_sta=%d fid_bed_end=%d fid_bed=%d fid2_bed=%d fid2=%d", fid_bed_sta, fid_bed_end, fid_bed, fid2_bed, fid2);
+            //if(verbose>0)fprintf(stderr, "fid_bed_sta=%d fid_bed_end=%d fid_bed=%d fid2_bed=%d fid2=%d", fid_bed_sta, fid_bed_end, fid_bed, fid2_bed, fid2);
         }
         break;
     }}
-    if(verbose>0){fprintf(stderr, "fid=%d fid2=%d fid_bed=%d fid2_bed=%d fid_bed_sta=%d, fid_bed_end", fid, fid2, fid_bed, fid2_bed, fid_bed_sta, fid_bed_end);}
-    if(M==0 && mode==MODE_P || mode==MODE_C || mode==MODE_PP){if(verbose>0){fprintf(stderr, "no paired features found\n");} if(outf!=NULL){gzclose(outf);}; return 0;}
+    //fprintf(stdout, "%d %d %d\n", pos1bed[fid2_bed], pos2bed[fid2_bed], fid2);
+    if(verbose>0){fprintf(stderr, "mode=%d fid=%d fid2=%d fid_bed=%d fid2_bed=%d fid_bed_sta=%d, fid_bed_end=%d N peaks=%d\n", mode, fid, fid2, fid_bed, fid2_bed, fid_bed_sta, fid_bed_end, M);}
+    if(M==0 && (mode==MODE_P || mode==MODE_C || mode==MODE_PP)){if(verbose>0){fprintf(stderr, "no paired features found\n");} if(outf!=NULL){gzclose(outf);}; return 0;}
     if(verbose>0){fprintf(stderr, "%d annotation features found.\n", npeaks);}
     
    
@@ -1362,7 +1363,10 @@ int lm(int argc, char** argv){
         }
         break;
     }}
-    if(verbose>0)printV(Pi1_a,M+1);
+    if(verbose>0){
+        fprintf(stderr, "Pi1:  "); printV2(Pi1, M+1);
+        fprintf(stderr, "Pi1_a:"); printV2(Pi1_a,M+1);
+    }
     
     
     
@@ -1622,9 +1626,7 @@ int lm(int argc, char** argv){
         return 0;
     }}
     
-    
-    
-    
+   
     // pairewise hierahical model for atac & eqtl
     if(mode==MODE_C || mode==MODE_P || mode==MODE_PP){
         if(verbose>0)fprintf(stderr, "Pairwise model\n");
