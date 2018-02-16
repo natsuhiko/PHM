@@ -52,7 +52,7 @@ do
 		--window-size 1000000 \
 		--variant-level $VL0 --variant-level2 $VL0 \
 		--feature-level $PI1_EQTL --feature-level2 $PI1_CAQTL \
-		--output $OUT -v
+		--output $OUT
 
 	K=`expr $K + 1`
 done
