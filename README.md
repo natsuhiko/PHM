@@ -1,4 +1,4 @@
-# Pairwise Hierarchical Model (Underconstruction)
+# Pairwise Hierarchical Model
 A Bayesian hierarchical model to map causal interactions between regulatory elements in the genome, that incorporates techniques from Mendelian Randomisation.
 
 ## How to build & install
@@ -116,11 +116,11 @@ The following shows the column descriptions:
 
 | Column No. | Description (pmr.gz) |
 |:----:|:-----------------------------------------|
-| 1    | Probability of master regulator (PMR) given that the peak is a QTL |
+| 1    | Log Probability of master regulator (PMR) given that the peak is a QTL |
 | 2    | Expected number of downstream peaks                             |
 | 3    | Expected number of upstream peaks |
-| 4    | Maximum a posteriori parent peak ID |
-| 5    | Posterior probability of causality for the MAP parent |
+| 4    | Maximum a posteriori (MAP) parent peak ID |
+| 5    | Log Posterior probability of causality for the MAP parent |
 
 ## Installation tips for CLAPACK and GSL
 
