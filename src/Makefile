@@ -1,7 +1,8 @@
 PROGFLAG = -DNIL -DFULLBF -DPEN
 CC=gcc
-CFLAGS := $(CFLAGS) -std=gnu99 -fpic -g -O2
-LDFLAGS := $(LDFLAGS) -lgsl -llapack -lblas -lm -lz -lhts
+
+CFLAGS := $(CFLAGS) -std=gnu99 -I/usr/include -I/usr/include/gsl -fpic -g -O2
+LDFLAGS := $(LDFLAGS) -lgslcblas -lgsl -llapack -lblas  -lm -lz -lpthread -lf2c -lhts
 
 PROGRAM = phm
 HM = hm
@@ -16,13 +17,13 @@ OBJS_BL = $(BL).o util_bayeslm.o usage.o getLogBF.o
 all: $(PROGRAM) $(HM) $(BL)
 
 $(PROGRAM): $(OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(PROGFLAG) -o $(PROGRAM) $^
+	$(CC) $(CFLAGS) $(PROGFLAG) -o $(PROGRAM) $^ $(LDFLAGS)
 
 $(HM): $(OBJS_HM)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $(HM) $^
+	$(CC) $(CFLAGS) -o $(HM) $^ $(LDFLAGS)
 
 $(BL): $(OBJS_BL)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $(BL) $^
+	$(CC) $(CFLAGS) -o $(BL) $^ $(LDFLAGS)
 
 .c.o:
 	$(CC) $(CFLAGS) -c $< $(PROGFLAG)
