@@ -1,6 +1,5 @@
 PROGFLAG = -DNIL -DFULLBF -DPEN
 CC=gcc
-
 CFLAGS := $(CFLAGS) -std=gnu99 -I/usr/include -I/usr/include/gsl -fpic -g -O2
 LDFLAGS := $(LDFLAGS) -lgslcblas -lgsl -llapack -lblas  -lm -lz -lpthread -lf2c -lhts
 
