@@ -2,6 +2,15 @@
 #include "util.h"
 #include "usage.h"
 
+
+double L2dist(double* x, double* y, int n){
+    double res = 0.0;
+    int i;
+    for(i=0; i<n; i++){ res += (x[i]-y[i])*(x[i]-y[i]); }
+    return res;
+}
+
+
 int cmpdr (const void * a, const void * b){
     if( *(double*)b - *(double*)a > 0.0){
         return 1;
@@ -39,9 +48,19 @@ long readTable(gzFile f, double* X, double* bf, char* type, long* nexp, double**
                         sscanf(cell, "%lf", X+i+P*ldx);
                     }else if(type[j]=='N'){
                         sscanf(cell, "%lf", &dcell);
-                        X[i+cumcol[l]*ldx] = dcell;
-                        for(m=0; m<nexp[j]; m++){
-                            X[i+(cumcol[l]+m+1)*ldx] = rk1(dcell, Xk[l][m]);
+                        if(nexp[j]==0){
+                            X[i+cumcol[l]*ldx] = dcell;
+                        }else{
+                            if(dcell<=1.0 && dcell>=0.0){
+                                X[i+cumcol[l]*ldx] = dcell;
+                                for(m=0; m<nexp[j]; m++){
+                                    X[i+(cumcol[l]+m+1)*ldx] = rk1(dcell, Xk[l][m]);
+                                }
+                            }else{
+                                for(m=-1; m<nexp[j]; m++){
+                                    X[i+(cumcol[l]+m+1)*ldx] = 0.0;
+                                }
+                            }
                         }
                         l++;
                     }else if(type[j]=='C'){
@@ -234,7 +253,8 @@ void Mstep(double* Xt, double* X0, double* R, double* y, double* beta, double* b
     // beta  <- backsolve(R, beta1)
     BackSolve(R, P, beta+P+1, beta);
     //double th = 15.;
-    //for(i=1; i<P; i++){if(beta[i]>th){beta[i]=beta0[i];}else if(beta[i]<(-th)){beta[i]=beta0[i];}}
+    double th = 15.0;
+    //for(i=0; i<4; i++){if(beta[i]>th){beta[i]=beta0[i];}else if(beta[i]<(-th)){beta[i]=beta0[i];}}
     for(i=0; i<P; i++){if(isnan(beta[i])>0){fprintf(stderr, "beta[%ld] is NaN\n", i);}}
     if(Itr<1){for(i=0; i<P; i++){beta[i]=beta_prior[i];}}
 }
@@ -265,8 +285,8 @@ double getQval(double* Z1, double* Pis, double* z, double* pjk, double* BF, long
         }
         pen += tmp * tmp;
     }
-    (*plkhd) += pen;
-    return nk_lsum3(Z1, Pis, nfeatures, 1) + nk_lsum2(z, pjk, L, 1) + nk_lsum2(z, BF, L, 1) + pen;
+    (*plkhd) -= pen/2;
+    return nk_lsum3(Z1, Pis, nfeatures, 1) + nk_lsum2(z, pjk, L, 1) + nk_lsum2(z, BF, L, 1) - pen/2.0;
 }
 
 
@@ -288,12 +308,15 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
     // parameters
     double sigma = 10.;
     double lambda[2] = {5.0, 1.0};
+    lambda[0]=sqrt(lambda[0])*((double)L)/(717473244.0);
     //double* Pis;  Pis= (double*)calloc(nfeatures, sizeof(double)); for(i=0; i<nfeatures; i++){Pis[i]=0.075;}
     //double* beta; beta  = (double*)calloc((Pi+1)*2, sizeof(double)); // coef length Pi + 1 + working space for another Pi + 1
     //double* gamma;gamma = (double*)calloc((Pj+1)*2, sizeof(double)); // (Pj + 1) x 2
     double  flip=1.0;
     double* beta_old;  beta_old =  (double*)calloc(Pi+1, sizeof(double)); // coef length Pi + working space for another Pi
-    double* gamma_old; gamma_old = (double*)calloc(Pj+1, sizeof(double)); // coef length Pi + working space for another Pi
+    double* beta_max;  beta_max =  (double*)calloc(Pi+1, sizeof(double)); // at max qval
+    double* gamma_old; gamma_old = (double*)calloc(Pj+1, sizeof(double)); // coef length Pj + working space for another Pi
+    double* gamma_max; gamma_max = (double*)calloc(Pj+1, sizeof(double)); // at max qval
     beta[Pi] =beta_old[Pi] =beta0[Pi] =1.0;//offset
     gamma[Pj]=gamma_old[Pj]=gamma0[Pj]=1.0;//offset
     cblas_dcopy(Pi, beta0, 1, beta, 1);
@@ -324,14 +347,16 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
     long itr;
     
     int again=0;
-    double lkhd, lkhd1=-1.0e10;
+    double lkhd, lkhd1=-1.0e10, pen;
     double qval, qval1=-1.0e10;
-    int conv=0;
-    for(itr=0; itr<1000; itr++){
+    int conv=0; 
+    for(itr=0; itr<10000; itr++){
         Itr=itr;
         //############
         //#  Esteps  #
         //############
+        dgemv(U0, nfeatures, Pj+1, nfeatures+Pj, gamma, Pis);// Pi <- U %*% gamma // not yet Pi
+        for(i=0; i<nfeatures; i++){Pis[i]=1./(1.+exp(-Pis[i]));} // Pis <- 1/(1+exp(Pis)))
         for(tid=0; tid<nthreads; tid++){
             pmt[tid].tid    = tid;
             pmt[tid].nfeaturesperthread = nfeaturesperthread;
@@ -364,32 +389,34 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
             if( (pthflag = pthread_join(pid[tid], NULL)) !=0 ){fprintf(stderr, "Thread not joined...aborted.\n"); return -9999;};
         }
         
-        
         lkhd = 0.0;
         for(tid=0; tid<nthreads; tid++){lkhd += pmt[tid].lkhd; if(isnan(pmt[tid].lkhd)>0){fprintf(stderr, "Partial likelihood for thread %d is NaN.\n", tid);} }
-        qval = getQval(Z1, Pis, z, pjk, BF, L, nfeatures, X0, beta, Pi, U0, gamma, Pj, &lkhd, lambda);
-        //fprintf(stderr, "qval=%lf -> %lf\n", qval1, qval);
-        if(verbose>0){
-             fprintf(stderr, "lkhd=%lf -> %lf\n", lkhd1, lkhd);
-             fprintf(stderr, "Current : "); printV2(beta, Pi+1); printV2(gamma, Pj+1);
-        }
-        if(isnan(lkhd)>0 || (lkhd1-lkhd>100.0 && again<20)){
+        qval = getQval(Z1, Pis, z, pjk, BF, L, nfeatures, X0, beta, Pi, U0, gamma, Pj, &lkhd, lambda); // adding penalty to lkhd
+        //lkhd = getQval(Z1, Pis, z, pjk, BF, L, nfeatures, X0, beta, Pi, U0, gamma, Pj, &pen, lambda); // adding penalty to lkhd
+        if(isnan(lkhd)>0 || (lkhd1-lkhd>500. && again<6)){
+            if(verbose>0){
+                fprintf(stderr, "[%d]  lkhd=%lf -> %lf\t", itr, lkhd1, lkhd); printV2n(beta, Pi+1); printV2(gamma, Pj+1);
+            }
             //fprintf(stderr, "  devol!\n");
             if(verbose>0){ fprintf(stderr, "  Before: "); printV2(beta, Pi);}
             for(i=0; i<Pi; i++){ beta[i]  = beta_old[i]  + flip*(beta[i]  - beta_old[i]) /(flip>0.0 ? 10.0 : 1.0); }
             for(i=0; i<Pj; i++){ gamma[i] = gamma_old[i] + flip*(gamma[i] - gamma_old[i])/(flip>0.0 ? 10.0 : 1.0); }
-            dgemv(U0, nfeatures, Pj+1, nfeatures+Pj, gamma, Pis); for(i=0; i<nfeatures; i++){Pis[i]=1./(1.+exp(-Pis[i]));}
+            //dgemv(U0, nfeatures, Pj+1, nfeatures+Pj, gamma, Pis); for(i=0; i<nfeatures; i++){Pis[i]=1./(1.+exp(-Pis[i]));}
             if(verbose>0){ fprintf(stderr, "  After : "); printV2(beta, Pi); }
             flip *= (-1.0);
             again++;
         }else{
+            if(verbose>0){
+                if(lkhd>lkhd1){ fprintf(stderr, "[%d] *lkhd=%lf -> %lf\t", itr, lkhd1, lkhd); printV2n(beta, Pi+1); printV2(gamma, Pj+1); }
+                 else{          fprintf(stderr, "[%d]  lkhd=%lf -> %lf\t", itr, lkhd1, lkhd); printV2n(beta, Pi+1); printV2(gamma, Pj+1); }
+            }
             //###########################
             //# Mstep for variant level #
             //###########################
             cblas_dcopy(Pi, beta,  1, beta_old,  1);
             cblas_dcopy(Pj, gamma, 1, gamma_old, 1);
             if(verbose>0)fprintf(stderr, "Mstep in variant level\n");
-            if(Pi>0) Mstep(Xt, X0, R, y, beta, beta0, L, Pi, lambda[0]);
+            if(Pi>0 && itr>1) Mstep(Xt, X0, R, y, beta, beta0, L, Pi, lambda[0]);
             if(verbose>0){fprintf(stderr, "beta="); printV2(beta, Pi);}
             for(tid=1; tid<nthreads; tid++){for(l=0; l<Pi; l++){for(l2=0; l2<Pi; l2++){Ie[l+l2*Pi]+=Ie[l+l2*Pi+tid*Pi*Pi];}}}
             
@@ -404,18 +431,21 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
                     y2[i] += Ut[i+j*(nfeatures+Pj)]*gamma[j];
                 }
             }
-            Mstep(Ut, U0, R2, y2, gamma, gamma0, nfeatures, Pj, lambda[1]);
+            if(Pj>0 && itr>1) Mstep(Ut, U0, R2, y2, gamma, gamma0, nfeatures, Pj, lambda[1]);
             if(verbose>0){fprintf(stderr, "gamma="); printV2(gamma, Pj);}
-            dgemv(U0, nfeatures, Pj+1, nfeatures+Pj, gamma, Pis);// Pi <- U %*% gamma // not yet Pi
-            for(i=0; i<nfeatures; i++){Pis[i]=1./(1.+exp(-Pis[i]));} // Pis <- 1/(1+exp(Pis)))
+            //dgemv(U0, nfeatures, Pj+1, nfeatures+Pj, gamma, Pis);// Pi <- U %*% gamma // not yet Pi
+            //for(i=0; i<nfeatures; i++){Pis[i]=1./(1.+exp(-Pis[i]));} // Pis <- 1/(1+exp(Pis)))
             
             // terminate
-            if(fabs(lkhd-lkhd1)<1.0e-4 && again==0 && itr>10){conv=1; break;}
-            flip = 1.0;
+            double paramdist = L2dist(beta, beta_old, Pi) + L2dist(gamma, gamma_old, Pj);
+            if(paramdist<0.0001 && again==0 && itr>10){conv=1; break;}
+            //if(fabs(lkhd-lkhd1)<1.0e-3 && again==0 && itr>10){conv=1; break;}
             lkhd1=lkhd;
+            flip = 1.0;
             again = 0;
         }
     }
+    fprintf(stderr, "Iteration finished: itr=%d\n", itr);
     
     //##############
     //# Output
@@ -629,7 +659,13 @@ long main(long argc, char** argv){
     gamma0[4] = 335.465419;
     gamma0[5] = 206.714531;*/
     
-    
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--init-feature-level")==0){
+        FILE* fgamma0;
+        fgamma0 = fopen(argv[i+1], "rb");
+        fread(gamma0, sizeof(double), Pj, fgamma0);
+        fclose(fgamma0);
+        fprintf(stderr, "Init Gamma: "); printV2(gamma0, Pj);
+    }}
     
     
     

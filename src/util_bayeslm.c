@@ -263,7 +263,7 @@ int gzfdscanf(char* filename, double** x){// N x P matrix
     int i=0;
     gzseek(f, 0L, SEEK_SET);
     (*x) = calloc(n, sizeof(double));
-    char* cell; cell = (char*)calloc(nc+1, sizeof(char));
+    char* cell; cell = (char*)calloc(maxnc+1, sizeof(char));
     nc=0;
     while((c=gzgetc(f)) != EOF){
         if(c=='\n'||c==' '||c=='\t'||c==','){

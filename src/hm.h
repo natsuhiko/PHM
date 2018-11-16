@@ -11,9 +11,9 @@
 #include <errno.h>
 #include <pthread.h>
 
-#include <cblas.h>
-#include <f2c.h>
-#include <clapack.h>
+//#include <cblas.h>
+//#include <f2c.h>
+//#include <clapack.h>
 
 #include <zlib.h>
 #include <math.h>

@@ -414,7 +414,7 @@ void emATACMultinom(double* bf, double* X, long N, long P, long LDX, double* Z, 
         
         
         if(isnan(lkhd)>0){fprintf(stderr, "NaN produced.\n"); return ;}
-        if(fabs((lkhd-lkhd0))<1e-3){fprintf(stderr, "Iteration finished.\n"); break;}else{lkhd0=lkhd; if(verbose>0){ fprintf(stderr, "[%ld] lkhd=%lf ", itr, lkhd); printV2(beta, P); fprintf(stderr, "\n"); } }
+        if(fabs(lkhd-lkhd0)<1e-7){break;}else{lkhd0=lkhd; if(verbose>0){ fprintf(stderr, "[%ld] lkhd=%lf\n", itr, lkhd); } }
         
         MstepMultinom(Xt, X, R, z, beta, N*3, P, LDX);
         //fprintf(stderr, "phi = %lf\n beta=", phi);
@@ -513,12 +513,12 @@ int emColoc(double* bf, double* Z, long nrow, double* z1){
                 }
             }
         }
-        psi = (z1[4]+z1[5]+1.)/(z1[0]+z1[1]+z1[2]+z1[3]+z1[4]+z1[5]+100.);
-        del = (z1[5]+10.)/(z1[4]+z1[5]+100.);
-        if(isnan(psi)>0 || isnan(del)>0){printV2(z1, 6); fprintf(stderr, "Parameters became NaN!\n"); break;}
-        if(verbose>0){ fprintf(stderr, "[%ld] lkhd=%lf psi=%lf delta=%lf\n", itr, lkhd, psi, del); }
+        psi = (z1[4]+z1[5])/(z1[0]+z1[1]+z1[2]+z1[3]+z1[4]+z1[5]);
+        del = z1[5]/(z1[4]+z1[5]);
+        if(isnan(psi)>0 || isnan(del)>0){printV2(z1, 6); fprintf(stderr, "Parameters become NaN!\n"); break;}
+        fprintf(stderr, "[%ld] lkhd=%lf psi=%lf delta=%lf\n", itr, lkhd, psi, del);
         if(lkhd>lkhd0 && fabs(lkhd-lkhd0)<1.0e-6){
-            if(verbose>0){ fprintf(stderr, "Model fitting finished.\n"); }
+            fprintf(stderr, "Finished\n");
             break;
         }else{
             lkhd0 = lkhd;
@@ -626,9 +626,9 @@ int main(int argc, char** argv){
                 for(j=0; j<nrow; j++){
                     //X[0*ldx + j] = 1.0;
                 }
-                if(verbose>0){fprintf(stderr, "Loading data...");}
+                fprintf(stderr, "Loading data...");
                 readTable(fi, NULL, bf, typi, nxpi, Xki, Bsi, nrow, pi, id1, id2, cumcoli, 0, 100.0);
-                if(verbose>0){fprintf(stderr, "Done.\n\n");}
+                fprintf(stderr, "Done.\n\n");
             }
             break;
         }
@@ -643,14 +643,6 @@ int main(int argc, char** argv){
         beta[0] =-4.007432;//-4.348672;
         beta[Pi]=-5.030170;//-4.166187;
         beta[Pi*2]=1.0;
-        for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--init-beta")==0){
-            FILE* fbeta = fopen(argv[k+1],"rb");
-            int info = fread(beta, sizeof(double), Pi*2, fbeta);
-            fprintf(stderr, "Init beta: ");
-            for(j=0; j<Pi*2; j++){fprintf(stderr, "%lf,", beta[j]);}
-            fclose(fbeta);
-            break;
-        }}
         emATACMultinom(bf, X, nrow, Pi*2, ldx, Z, z1, beta, nthreads);
     }else if(NB==6){
         emColoc(bf, Z, nrow, z1);
@@ -772,6 +764,540 @@ int main(int argc, char** argv){
     
 }
 
+
+int mainold(int argc, char** argv){
+   
+    long i, j, k;
+    long info;
+    
+    if(argc==1){usage_phm(); return -1;}
+    for(k=0; k<argc; k++){if(strcmp(argv[k],"--verbose")==0 | strcmp(argv[k],"-v")==0){verbose=1;}}
+    
+    if(verbose>0){
+        fprintf(stderr, "Command: ");
+        for(i=0; i<argc; i++){ fprintf(stderr, "%s ", argv[i]); }
+        fprintf(stderr, "\n\n");
+    }
+    
+    long nthreads = 1;
+    for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--n-threads")==0 || strcmp(argv[k],"-t")==0){nthreads = (long)atoi(argv[k+1]);}}
+    
+    
+    long nrow=0, ncol=12, nfeatures;
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-f")==0){ nfeatures = (long)atoi(argv[i+1]); }}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-r")==0){ nrow = (long)atoi(argv[i+1]); }}
+    
+    
+    
+    //long nrow=0, ncol=0;
+    long binary_input = 0;
+    /*for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--dimention")==0 || strcmp(argv[k],"-d")==0){
+        sscanf(argv[k+1], "%ld,%ld", &nrow, &ncol);
+        binary_input = 1;
+        break;
+    }}
+    
+    if(binary_input==0){// GZ files
+        gzFile f = gzopen(argv[1], "rb6f");
+        dim(f, &nrow, &ncol, 0);
+        gzclose(f);
+    }*/
+    
+    if(verbose>0) fprintf(stderr, "Data: %ld x %ld\n", nrow, ncol-2);
+    double* X; X = (double*)calloc(nrow*(ncol-2), sizeof(double));
+    double* Z; Z = (double*)calloc(nrow*(ncol-2), sizeof(double));
+    double* z1; z1 = (double*)calloc(ncol-2, sizeof(double));
+    long* id1; id1 = (long*)calloc(nrow, sizeof(long));
+    long* id2; id2 = (long*)calloc(nrow, sizeof(long));
+    
+    
+    
+    
+    
+    // BF table read
+    if(binary_input==0){// GZ
+        gzFile f = NULL;
+        for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-i")==0){f = gzopen(argv[i+1], "rb6f"); break;}}
+        if(f==NULL){fprintf(stderr, "No input!\n"); return 1;}
+        read2IDTable(f, id1, id2, X, nrow, ncol);
+    }else{// BIN
+        FILE* f; f = fopen(argv[1], "rb");
+        info = fread(X, sizeof(double), nrow*(ncol-2), f);
+        fclose(f);
+        f = fopen("Res2Splines/id1.bin", "rb");//hoge
+        //f = fopen("id1.bin", "rb");
+        info = fread(id1, sizeof(long), nrow, f);
+        fclose(f);
+        f = fopen("Res2Splines/id2.bin", "rb");
+        //f = fopen("id2.bin", "rb");
+        info = fread(id2, sizeof(long), nrow, f);
+        fclose(f);
+        //for(i=0; i<10; i++)fprintf(stderr, "%ld %ld\n", id1[i], id2[i]);
+    }
+    
+    if(verbose>0) fprintf(stderr, "\nData was loaded...\n\n");
+    
+    // beta
+    // coefs
+#ifdef NIL
+    long P = 2;
+#elif PEAKHEIGHT
+    long P = 40;
+#elif PEAKDIST
+    long P = 12;
+#elif FIT
+    long P = 5;
+#endif
+    
+    // pairwise fit
+    long fitpair = 0;
+    for(k=0; k<argc; k++){if(strcmp(argv[k],"--cooperative")==0){ fitpair=1; }}
+    for(k=0; k<argc; k++){if(strcmp(argv[k],"--collaborative")==0){ fitpair=2; }}
+    //P += (fitpair==2 ? 1 : 0);
+    
+    
+    
+#ifdef PEN 
+    double* beta; beta = (double*)calloc(P+P*P, sizeof(double));
+#else
+    double* beta; beta = (double*)calloc(2*P, sizeof(double));
+#endif
+    for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--input-beta")==0){
+        FILE* fbeta = fopen(argv[k+1],"rb");
+        info = fread(beta, sizeof(double), P, fbeta);
+        fclose(fbeta);
+        break;
+    }}
+    if(verbose>0){ 
+        fprintf(stderr, "Init beta:"); 
+        printV2(beta, P); 
+        fprintf(stderr, "\n");
+    }
+    
+    
+   /* 
+    // covariates
+    FILE* fcovs; fcovs = fopen("Data/ph.bin", "rb");
+    double* ph; ph = (double*)calloc(277128, sizeof(double));
+    info = fread(ph, sizeof(double), 277128, fcovs);
+    fclose(fcovs);
+    fcovs = fopen("Data/midp.bin", "rb");
+    double* midp; midp = (double*)calloc(277128, sizeof(double));
+    info = fread(midp, sizeof(double), 277128, fcovs);
+    fclose(fcovs);
+    printV2(midp, 10);
+    */
+    
+    
+    
+    
+    
+    ////creating cov mat
+    double* Covs; Covs = (double*)calloc(nrow*3*(P+1), sizeof(double));
+    
+    
+    
+    
+    
+    
+    
+    
+    // knots
+    double apeakdis;
+    double* xk6; xk6=(double*)calloc(4, sizeof(double)); xk6[0] = 0.1470588; xk6[1] = 0.3823529; xk6[2] = 0.6176471; xk6[3]=0.8529412;
+    double* xk5; xk5=(double*)calloc(3, sizeof(double)); xk5[0] = 0.1923077; xk5[1] = 0.5000000; xk5[2] = 0.8076923;
+    double* x1; x1 = (double*)calloc(5, sizeof(double));
+    double* x2; x2 = (double*)calloc(5, sizeof(double));
+    long jk2l[25] ={0,1, 2 ,3, 4, 
+        1,5, 6, 7, 8, 
+        2,6, 9,10,11, 
+        3,7,10,12,13, 
+        4,8,11,13,14};
+    // penalty matrix for spline
+#ifdef PEAKDIST
+    setBS(xk6, 4);
+#elif PEAKHEIGHT
+    setBS2(xk5, 3);
+    BT=(double*)calloc(15*25, sizeof(double));
+    for(i=0; i<25; i++){BT[i+jk2l[i]*25]=1.0;}
+    beta[40] = 1.0;
+    FILE* covpeakdist; covpeakdist=fopen("Data/offs_peak_dist.bin","rb");
+    info = fread(Covs+nrow*3*40, sizeof(double), nrow*3, covpeakdist);
+    fclose(covpeakdist);
+#elif FIT
+    // tfbs
+    
+    long anrow=0, ancol=0;
+    for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--adim")==0){
+        sscanf(argv[k+1], "%ld,%ld", &anrow, &ancol);
+        break;
+    }}
+    if(anrow==0){fprintf(stderr, "No dimention info --adim\n"); return 1;}
+    
+    FILE* ftfbs=NULL;
+    for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--annot")==0){
+        ftfbs = fopen(argv[k+1], "rb"); fprintf(stderr, "Annotation file: %s\n", argv[k+1]);
+        break;
+    }}
+    if(ftfbs==NULL){fprintf(stderr, "No annotation --annot\n"); return 1;}
+    
+    long conp = 0;
+    for(k=0; k<argc; k++){if(strcmp(argv[k],"--conp")==0){ conp++; }}
+    long symm = 1;
+    long up=1;
+    for(k=0; k<argc; k++){if(strcmp(argv[k],"--downstream")==0){ symm=0; up=0;}}
+    for(k=0; k<argc; k++){if(strcmp(argv[k],"--upstream")==0){ symm=0; }}
+    
+    long tid=0;
+    for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--tid")==0){ tid =((long)atoi(argv[k+1]))-1; break;}}
+    long tid2=tid/ancol; 
+    tid = tid%ancol;
+    fprintf(stderr, "tid=%ld tid2=%ld\n", tid+1, tid2+1);
+    if(tid==tid2 && fitpair==2){P=4;}
+    if(symm==0){P=3;}
+    
+    double* tfbs1;
+    double* tfbs2;
+    double avgt1, avgt2, avgt12;
+    double* qhic; 
+    if(anrow<nrow){
+        tfbs1 = (double*)calloc(anrow, sizeof(double));
+        tfbs2 = (double*)calloc(anrow, sizeof(double));
+        fseek(ftfbs, 8*anrow*tid, SEEK_SET);
+        info = fread(tfbs1, sizeof(double), anrow, ftfbs);
+        fseek(ftfbs, 8*anrow*tid2, SEEK_SET);
+        info = fread(tfbs2, sizeof(double), anrow, ftfbs);
+        avgt1  = nk_mean(tfbs1, anrow, 1);
+        avgt2  = nk_mean(tfbs2, anrow, 1);
+        avgt12 = nk_mean2(tfbs1, tfbs2, anrow, 1);
+        fprintf(stderr, "tfid1=%lf %lf %lf %lf %lf %lf...\n", tfbs1[0], tfbs1[1], tfbs1[2], tfbs1[3], tfbs1[4], tfbs1[5]);
+        fprintf(stderr, "tfid2=%lf %lf %lf %lf %lf %lf...\n", tfbs2[0], tfbs2[1], tfbs2[2], tfbs2[3], tfbs2[4], tfbs2[5]);
+    }else if(anrow==nrow){
+        fprintf(stderr, "peak pair annot\n");
+        qhic = (double*)calloc(nrow, sizeof(double));
+        fseek(ftfbs, 8*nrow*tid, SEEK_SET);
+        info = fread(qhic, sizeof(double), nrow, ftfbs);
+    }
+    
+    
+    // 0: no adj
+    // 1: peak dist
+    // 2: peak height
+    // 3: peak dist & height
+    long adj=0;
+    for(k=0; k<argc; k++){if(strcmp(argv[k],"--adj-pd")==0){ adj  = 1; break;}}
+    for(k=0; k<argc; k++){if(strcmp(argv[k],"--adj-ph")==0){ adj += 2; break;}}
+    
+    fprintf(stderr, "Adj option: %ld\n", adj);
+    
+    
+    
+    //FILE* ftfbs; ftfbs = fopen("Data/hic_compartments6p2.bin", "rb"); fprintf(stderr, "HiC data\n"); long maxtf=8; // pair 8
+    //FILE* ftfbs; ftfbs = fopen("Data/tfbs2.bin", "rb"); fprintf(stderr, "Encode ChIP data\n"); long maxtf=77; // pair 77
+    //FILE* ftfbs; ftfbs = fopen("Data/segway.tss.pf.e.we.bin", "rb"); fprintf(stderr, "Segway data\n"); long maxtf=4; // pair 4
+    //FILE* ftfbs; ftfbs = fopen("Data/histone2.bin", "rb"); fprintf(stderr, "Histone data\n"); long maxtf=11; // pair 11
+    
+    
+    
+    //FILE* fhicpeak; fhicpeak = fopen("Data/hicpeak.bin", "rb");
+    //double* hicpeak; hicpeak = (double*)calloc(277128, sizeof(double));
+    //info = fread(hicpeak, sizeof(double), 277128, fhicpeak);
+    //FILE* fhicpeak = fopen("Data/hicpeakpair.bin", "rb");    // hic peak rao
+    //FILE* fhicpeak = fopen("Data/hic_tad_intersect.bin", "rb");    // hic intersect rao
+    //FILE* fhicpeak = fopen("Data/hic_tad_union.bin", "rb");    // hic union rao
+    //FILE* fhicpeak = fopen("Data/chic.pr.ot.bin", "rb");    // chic pr pr
+    //FILE* fhicpeak = fopen("Data/chic.pr.po.bin", "rb");    // chic pr other
+    //qhic = 
+    
+    
+    //betahat height
+    double* betahat_ph; betahat_ph = (double*)calloc(40, sizeof(double));
+    //betahat dist
+    double* betahat;    betahat    = (double*)calloc(12, sizeof(double));
+    FILE* fbetahat;
+    if(adj==0){
+        beta[0] = -4.3;// hoge
+        beta[1] = -4.7;
+        //beta[2] = 1.0;
+    }else if(adj==1 || adj==3){
+        fbetahat = fopen("Data/beta_peakdist.bin","rb");
+        info = fread(betahat, sizeof(double), 12, fbetahat);
+        fclose(fbetahat);
+        printV2(betahat, 12);
+    }
+    if(adj==2){
+        fbetahat = fopen("Data/beta40.bin","rb");
+        info = fread(betahat_ph, sizeof(double), 40, fbetahat);
+        fclose(fbetahat);
+        printV2(betahat_ph, 40);
+    }else if(adj==3){
+        fbetahat = fopen("Data/beta40withPeakDistCorrected.bin","rb");
+        info = fread(betahat_ph, sizeof(double), 40, fbetahat);
+        fclose(fbetahat);
+        printV2(betahat_ph, 40);
+    }
+    
+    
+#endif
+    
+    
+    
+    for(i=0; i<nrow; i++){
+#ifdef NIL
+        Covs[nrow*3*0 + i*3+0] = 1.0;
+        Covs[nrow*3*1 + i*3+1] = 1.0;
+        Covs[nrow*3*1 + i*3+2] = 1.0;
+#elif PEAKHEIGHT
+        x1[0] = x2[0] = 1.0;
+        x1[1] = ph[id1[i]-1];
+        x2[1] = ph[id2[i]-1];
+        for(k=0; k<3; k++){
+            x1[k+2] = rk1(x1[1], xk5[k]);
+            x2[k+2] = rk1(x2[1], xk5[k]);
+        }
+        for(j=0; j<5; j++){
+            for(k=0; k<5; k++){
+                Covs[nrow*3*jk2l[j+k*5] + i*3+0] = (j==k ? x1[j]*x2[k] : x1[j]*x2[k]+x1[k]*x2[j]);
+                Covs[nrow*3*(j+k*5+15)  + i*3+1] = x1[j]*x2[k];
+                Covs[nrow*3*(j+k*5+15)  + i*3+2] = x1[k]*x2[j];
+            }
+        }
+#elif PEAKDIST
+        Covs[nrow*3*0 + i*3+0] = 1.0;
+        Covs[nrow*3*6 + i*3+1] = 1.0;
+        Covs[nrow*3*6 + i*3+2] = 1.0;
+        
+        apeakdis = fabs(midp[id1[i]-1]-midp[id2[i]-1])/500000.0;
+        
+        Covs[nrow*3*1 + i*3+0] = apeakdis;
+        Covs[nrow*3*7 + i*3+1] = apeakdis;
+        Covs[nrow*3*7 + i*3+2] = apeakdis;
+        
+        
+        for(k=0; k<4; k++){
+            Covs[nrow*3*(2+k) + i*3+0] = rk1(apeakdis, xk6[k]);
+            Covs[nrow*3*(8+k) + i*3+1] = rk1(apeakdis, xk6[k]);
+            Covs[nrow*3*(8+k) + i*3+2] = rk1(apeakdis, xk6[k]);
+        }
+#elif FIT
+        // peak dist offset
+        
+        if(verbose>0){
+           if(i==0)fprintf(stderr, "P=%ld, tid1=%ld, tid2=%ld, causal on pleio? %ld, fitpair? %ld\n", P, tid, tid2, conp, fitpair);
+        }
+        Covs[nrow*3*P + i*3+0] = betahat[0];
+        Covs[nrow*3*P + i*3+1] = betahat[6];
+        Covs[nrow*3*P + i*3+2] = betahat[6];
+        
+        apeakdis = fabs(midp[id1[i]-1]-midp[id2[i]-1])/500000.0;
+        
+        Covs[nrow*3*P + i*3+0] += apeakdis*betahat[1];
+        Covs[nrow*3*P + i*3+1] += apeakdis*betahat[7];
+        Covs[nrow*3*P + i*3+2] += apeakdis*betahat[7];
+        
+        for(k=0; k<4; k++){
+            Covs[nrow*3*P + i*3+0] += rk1(apeakdis, xk6[k])*betahat[2+k];
+            Covs[nrow*3*P + i*3+1] += rk1(apeakdis, xk6[k])*betahat[8+k];
+            Covs[nrow*3*P + i*3+2] += rk1(apeakdis, xk6[k])*betahat[8+k];
+        }
+        
+        // peak height offset
+        
+        x1[0] = x2[0] = 1.0;
+        x1[1] = ph[id1[i]-1];
+        x2[1] = ph[id2[i]-1];
+        for(k=0; k<3; k++){
+            x1[k+2] = rk1(x1[1], xk5[k]);
+            x2[k+2] = rk1(x2[1], xk5[k]);
+        }
+        
+        for(j=0; j<5; j++){
+            for(k=0; k<5; k++){
+                Covs[nrow*3*P + i*3+0] += (j==k ? x1[j]*x2[k] : (x1[j]*x2[k]+x1[k]*x2[j])/2.0)*betahat_ph[jk2l[j+k*5]];
+                Covs[nrow*3*P + i*3+1] += x1[j]*x2[k] * betahat_ph[j+k*5+15];
+                Covs[nrow*3*P + i*3+2] += x1[k]*x2[j] * betahat_ph[j+k*5+15];
+            }
+        }
+        
+        // intersept
+        Covs[nrow*3*0 + i*3+0] = 1.0;
+        Covs[nrow*3*1 + i*3+1] = 1.0;
+        Covs[nrow*3*1 + i*3+2] = 1.0;
+        
+        if(anrow==nrow){
+            // hic
+            Covs[nrow*3*2 + i*3+0] = 0.0;
+            Covs[nrow*3*2 + i*3+1] = qhic[i];
+            Covs[nrow*3*2 + i*3+2] = qhic[i];
+            Covs[nrow*3*3 + i*3+0] = qhic[i] + (conp>0 ? Covs[nrow*3*2 + i*3+0] : 0.0);
+            Covs[nrow*3*3 + i*3+1] = 0.0     + (conp>0 ? Covs[nrow*3*2 + i*3+1] : 0.0);
+            Covs[nrow*3*3 + i*3+2] = 0.0     + (conp>0 ? Covs[nrow*3*2 + i*3+2] : 0.0);
+        }else{
+            if(fitpair==0){
+                // single
+                Covs[nrow*3*2 + i*3+0] = 0.0;//2.0*avgt1;
+                Covs[nrow*3*2 + i*3+1] = (up>0 ? tfbs1[id1[i]-1] : tfbs1[id2[i]-1]);
+                Covs[nrow*3*2 + i*3+2] = (up>0 ? tfbs1[id2[i]-1] : tfbs1[id1[i]-1]);
+                if(symm>0){
+                    Covs[nrow*3*3 + i*3+0] = 0.0;//tfbs1[id1[i]-1] + tfbs1[id2[i]-1] + (conp>0 ? Covs[nrow*3*2 + i*3+0] : 0.0);
+                    Covs[nrow*3*3 + i*3+1] = tfbs1[id2[i]-1]                   + (conp>0 ? Covs[nrow*3*2 + i*3+1] : 0.0);
+                    Covs[nrow*3*3 + i*3+2] = tfbs1[id1[i]-1]                   + (conp>0 ? Covs[nrow*3*2 + i*3+2] : 0.0);
+                }
+            }else if(fitpair==1){
+                // cooperative binding
+                Covs[nrow*3*2 + i*3+0] = 0.0;//2.0*avgt12;
+                Covs[nrow*3*2 + i*3+1] = (up>0 ? tfbs1[id1[i]-1]*tfbs2[id1[i]-1] : tfbs1[id2[i]-1]*tfbs2[id2[i]-1]);
+                Covs[nrow*3*2 + i*3+2] = (up>0 ? tfbs1[id2[i]-1]*tfbs2[id2[i]-1] : tfbs1[id1[i]-1]*tfbs2[id1[i]-1]);
+                if(symm>0){
+                    Covs[nrow*3*3 + i*3+0] = 0.0;//tfbs1[id1[i]-1]*tfbs2[id1[i]-1] + tfbs1[id2[i]-1]*tfbs2[id2[i]-1] + (conp>0 ? Covs[nrow*3*2 + i*3+0] : 0.0);
+                    Covs[nrow*3*3 + i*3+1] = tfbs1[id2[i]-1]*tfbs2[id2[i]-1]                                   + (conp>0 ? Covs[nrow*3*2 + i*3+1] : 0.0);
+                    Covs[nrow*3*3 + i*3+2] = tfbs1[id1[i]-1]*tfbs2[id1[i]-1]                                   + (conp>0 ? Covs[nrow*3*2 + i*3+2] : 0.0);
+                }
+            }else{
+                // collaborative binding
+                Covs[nrow*3*2 + i*3+0] = tfbs1[id1[i]-1]*tfbs2[id2[i]-1] + tfbs2[id1[i]-1]*tfbs1[id2[i]-1];
+                Covs[nrow*3*2 + i*3+1] = 0.0;//Covs[nrow*3*2 + i*3+0];
+                Covs[nrow*3*2 + i*3+2] = 0.0;//Covs[nrow*3*2 + i*3+0];
+                Covs[nrow*3*3 + i*3+0] = 0.0;
+                Covs[nrow*3*3 + i*3+1] = tfbs1[id1[i]-1]*tfbs2[id2[i]-1];//Covs[nrow*3*2 + i*3+0];
+                Covs[nrow*3*3 + i*3+2] = tfbs2[id1[i]-1]*tfbs1[id2[i]-1];//Covs[nrow*3*2 + i*3+0];
+                if(tid!=tid2){
+                    Covs[nrow*3*4 + i*3+0] = 0.0;
+                    Covs[nrow*3*4 + i*3+1] = tfbs1[id1[i]-1]*tfbs2[id2[i]-1]*0.0 + tfbs2[id1[i]-1]*tfbs1[id2[i]-1];
+                    Covs[nrow*3*4 + i*3+2] = tfbs1[id1[i]-1]*tfbs2[id2[i]-1]     + tfbs2[id1[i]-1]*tfbs1[id2[i]-1]*0.0;
+                }
+            }
+        }
+#endif
+
+    }
+    //cov output
+    /*FILE* covpeakdist; covpeakdist=fopen("Data/offs_peak_height.bin","wb");
+    fwrite(Covs+nrow*3*4, sizeof(double), nrow*3, covpeakdist);
+    fclose(covpeakdist);*/
+    if(verbose>0){
+        for(i=0; i<3; i++){for(k=0; k<P+1; k++){fprintf(stderr, "%lf ", Covs[i+nrow*3*k]);} fprintf(stderr, "\n");} fprintf(stderr, "\n");
+    }
+    //fprintf(stderr, "means %lf %lf %lf %lf\n", nk_mean(Covs,nrow*3,1), nk_mean(Covs+nrow*3,nrow*3,1), nk_mean(Covs+nrow*6,nrow*3,1), nk_mean(Covs+nrow*9,nrow*3,1));
+    
+#ifdef NIL
+    if(verbose>0) fprintf(stderr, "Null model...\n");
+    beta[0]=-4.007432;//-4.348672;
+    beta[1]=-5.030170;//-4.166187;
+    emATACMultinom(X, Covs, nrow, P, nrow*3, Z, z1, beta, nthreads);
+#elif PEAKHEIGHT
+    fprintf(stderr, "Peak height...\n");
+    emATACMultinom(X, Covs, nrow, P, nrow*3+50, Z, z1, beta, nthreads);
+#elif PEAKDIST
+    fprintf(stderr, "Peak dist...\n");
+    emATACMultinom(X, Covs, nrow, P, nrow*3+P, Z, z1, beta, nthreads);
+#elif FIT
+    fprintf(stderr, "Fitted model...\n");
+    emATACMultinom(X, Covs, nrow, P, nrow*3, Z, z1, beta, nthreads);
+#endif
+   
+    
+    
+    
+    //##########
+    //# Output #
+    //##########
+    
+    char* prefix;
+    char* ofname;
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-o")==0){ prefix = argv[i+1]; }}
+    ofname = (char*)calloc(strlen(prefix)+100, sizeof(char));
+    
+    // directry exists?
+    struct stat st = {0}; if (stat(prefix, &st) == -1) { mkdir(prefix, 0700); }
+    
+    // hyper-parameters
+    int binf=1;
+    if(binf>0){// binary
+        sprintf(ofname, "%s/peak_pair_level.bin", prefix);
+        FILE* outf; outf = fopen(ofname, "wb");
+#ifdef PEN
+        fwrite(beta, sizeof(double), P+P*P, outf);
+#else
+        fwrite(beta, sizeof(double), P*2, outf);
+#endif
+        fclose(outf);
+    }else{// gzipped
+        sprintf(ofname, "%s/peak_pair_level.gz", prefix);
+        gzFile outf = gzopen(ofname, "wb6f");
+#ifdef PEN
+        char sep = '\t';
+        for(j=0; j<P+1; j++){
+            sep='\t';
+            for(i=0; i<P; i++){
+                if(i==P-1){sep='\n';}
+                gzprintf(outf, "%lf%c", beta[i+j*P], sep);
+            }
+        }
+#else
+        char sep = '\t';
+        for(i=0; i<P; i++){
+            if(i==P-1){sep='\n';}
+            gzprintf(outf, "%lf%c", beta[i], sep);
+        }
+#endif
+        gzclose(outf);
+    }
+    
+    // posterior prob.
+    binf=0;
+    if(binf>0){// binary
+        sprintf(ofname, "%s/pp.bin", prefix);
+        FILE* outf; outf = fopen(ofname, "wb");
+        fwrite(Z, sizeof(double), nrow*(ncol-2), outf);
+        fclose(outf);
+    }else{// gzipped
+        sprintf(ofname, "%s/pp.gz", prefix);
+        gzFile outf = gzopen(ofname, "wb6f");
+        for(i=0; i<nrow; i++){
+            gzprintf(outf, "%ld\t%ld", id1[i], id2[i]);
+            Z[i] += Z[i+4*nrow] + Z[i+6*nrow] + Z[i+8*nrow];
+            for(j=0; j<4; j++){
+                gzprintf(outf, "\t%lf", log(Z[i+j*nrow]));
+            }
+            gzprintf(outf, "\t%lf", log(Z[i+5*nrow]));
+            gzprintf(outf, "\t%lf", log(Z[i+7*nrow]));
+            gzprintf(outf, "\t%lf\n", log(Z[i+9*nrow]));
+        }
+        gzclose(outf);
+    }
+    
+    // PMR
+    double* p;     p = (double*)calloc(nfeatures*2, sizeof(double)); // having 0 downstream peak
+    double* q;     q = (double*)calloc(nfeatures*2, sizeof(double)); // having 0 upstream   peak
+    double* tss; tss = (double*)calloc(nfeatures, sizeof(double)); // tss flag
+    double* we;  we  = (double*)calloc(nfeatures, sizeof(double)); // we flag
+    long*   parent;    parent    =   (long*)calloc(nfeatures, sizeof(long));   // parent id
+    double* maxparent; maxparent = (double*)calloc(nfeatures, sizeof(double)); // maximum posterior prob for the "parent"
+    
+    //FILE* ftfbs; ftfbs = fopen("Data/segway.tss.pf.e.we.bin", "rb");
+    //fseek(ftfbs, 8*nfeatures*0, SEEK_SET);
+    //info = fread(tss, sizeof(double), nfeatures, ftfbs);
+    //fseek(ftfbs, 8*nfeatures*3, SEEK_SET);
+    //info = fread(we, sizeof(double), nfeatures, ftfbs);
+    
+    for(i=0; i<nfeatures; i++){
+        tss[i]=1.0; 
+        we[i]=1.0;
+        parent[i] = -1;
+    }
+    getPeakwiseAnnot(id1, id2, Z, nrow, nfeatures, p, q, tss, we, parent, maxparent);
+    
+    sprintf(ofname, "%s/pmr.gz", prefix);
+    gzFile outf_pmr = gzopen(ofname, "wb6f");
+    for(i=0; i<nfeatures; i++){
+        gzprintf(outf_pmr, "%lf\t%lf\t%lf\t%ld\t%lf\n", log((1.0-p[i])*(q[i])), p[i+nfeatures], q[i+nfeatures], parent[i]+1, log(maxparent[i]));
+    }
+    gzclose(outf_pmr);
+        
+    
+ 
+}
 
 
 

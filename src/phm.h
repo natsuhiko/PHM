@@ -11,8 +11,8 @@
 #include <errno.h>
 #include <pthread.h>
 
-#include <f2c.h>
-#include <blaswrap.h>
+//#include <f2c.h>
+//#include <blaswrap.h>
 #include <clapack.h>
 //#include <cblas.h>
 

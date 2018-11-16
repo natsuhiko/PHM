@@ -47,6 +47,14 @@ int endWith(char* x, char* y){
     return 1;
 }
 
+void printV2n(double* x, long n){
+    long i;
+    for(i=0; i<n; i++){
+        fprintf(stderr, "%lf,", x[i]);
+    }
+}
+
+
 void printV2(double* x, long n){
     long i;
     for(i=0; i<n; i++){
@@ -313,14 +321,71 @@ long setBS2(double* xk, long n){
     return info;
 }
 
-void qr(double* A, double* R, long M, long N, long lda){
+
+void clear1(double* x, int n){
+    int i;
+    for(i=0; i<n; i++){
+        x[i] = 0.0;
+    }
+}
+
+double nk_ddot(int n, double* x, int incx, double* y, int incy){
+    int i;
+    double res=0.0;
+    for(i=0; i<n; i++){
+        res += x[i]*y[i];
+    }
+    return res;
+}
+
+double nk_dnrm2(int n, double* x, int incx){
+    return sqrt(nk_ddot(n, x, incx, x, incx));
+}
+
+void nk_daxpy(int n, double a, double* x, int incx, double* y, int incy){
+    int i;
+    for(i=0; i<n; i++){
+        y[i] += a * x[i];
+    }
+}
+
+void nk_dscal(int n, double a, double* x, int incx){
+    int i;
+    for(i=0; i<n; i++){
+        x[i] *= a;
+    }
+}
+
+
+void qr(double* X, double* R, int n, int p, int ldx){
+    // QR decomp using Gram-Schmidt orthogonalization
+    // X is replaced by Q
+
+        int i, j;
+
+        clear1(R, p*p);
+
+        for(i=0; i<p; i++){
+                for(j=0; j<i; j++){
+                        R[i*p+j] = nk_ddot(n, X+ldx*j, 1, X+ldx*i, 1);
+                        nk_daxpy(n, -R[i*p+j], X+ldx*j, 1, X+ldx*i, 1);
+                }
+                R[i*p+i] = nk_dnrm2(n, X+ldx*i, 1);
+                if(R[i*p+i]>0.0){
+                        nk_dscal(n, 1.0/R[i*p+i], X+ldx*i, 1);
+                }
+        }
+}
+
+
+void qr_lapack(double* A, double* R, long M, long N, long lda){
     long lwork = N*N;
     long info;
     double* work; work = (double*)calloc(lwork, sizeof(double));
     double* tau;  tau  = (double*)calloc(N,     sizeof(double));
     //fprintf(stderr, "M=%ld N=%ld lda=%ld lwork=%ld info=%ld\n", M, N, lda, lwork, info);
     dgeqrf_(&M, &N, A, &lda, tau, work, &lwork, &info);
-    //fprintf(stderr, "dgeqrf=%d\n", info);
+    fprintf(stderr, "dgeqrf=%d\n", info);
     
     long K = N;
     long i,j;
@@ -331,7 +396,7 @@ void qr(double* A, double* R, long M, long N, long lda){
     }
     //fprintf(stderr, "%d %d %d %d %d %d\n", M, N, K, lda, lwork, info);
     dorgqr_(&M, &N, &K, A, &lda, tau, work, &lwork, &info);
-    //fprintf(stderr, "dorgqr=%d\n", info);
+    fprintf(stderr, "dorgqr=%d\n", info);
     free(work);
     free(tau);
 }

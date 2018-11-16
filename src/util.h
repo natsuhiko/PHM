@@ -20,6 +20,7 @@ void printVL(long* x, long n);
 void printM(double* x, long n, long m);
 void printM2(double* x, long n, long ldx, long m);
 void printV2(double* x, long n);
+void printV2n(double* x, long n);
 void rk(double* x0, double* x, double* xk, long n, long nk);
 void expand(int* pos, double* val, int n, int* pos2, double* val2, int n2, double* w);
 void softmax(double* eta, double* y, int n);
@@ -46,7 +47,8 @@ double nk_lsum2(double* x, double* p, long n, long ldx);
 double nk_lsum3(double* x, double* p, long n, long ldx);
 char dim(gzFile f, long* pN, long* pP, long skip);
 
-void qr(double* A, double* R, long M, long N, long lda);
+void qr(double* A, double* R, int M, int N, int lda);
+void qr_lapack(double* A, double* R, long M, long N, long lda);
 void ForwardSolve(double* R, long p, double* y, double* x);
 void BackSolve(double* R, long p, double* y, double* x);
 
