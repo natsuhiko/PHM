@@ -163,7 +163,8 @@ void* Estep(void *args){
     pend = ((tid+1)*nfeaturesperthread < nfeatures) ? (tid+1)*nfeaturesperthread : nfeatures;
     for(j=pstart; j<pend; j++){
         //fprintf(stderr, "%d-%d\n", cumloci[j], cumloci[j+1]);
-        //fprintf(stderr, "%dth peak %d %d\n", j, pstart, pend);
+//remove        
+//fprintf(stderr, "%dth peak %d %d\n", j, pstart, pend);
         // eta <- X, beta
 #ifdef CBLAS
         fprintf(stderr, "blas\n");
@@ -233,7 +234,7 @@ void* Estep(void *args){
 
 
 int Itr;
-void Mstep(double* Xt, double* X0, double* R, double* y, double* beta, double* beta_prior, long L, long P, double lambda){
+void Mstep(double* Xt, double* X0, double* R, double* y, double* beta, double* beta_prior, long L, long P, double lambda, double* Pis){
     long i, j, ldx = P+L;
     for(i=0; i<P; i++){
         y[L+i]=0.0;
@@ -241,21 +242,19 @@ void Mstep(double* Xt, double* X0, double* R, double* y, double* beta, double* b
             Xt[L+i+ldx*j] = lambda*X0[L+i+ldx*j];
         }
     }
-    
     // QR decomposition
-    qr(Xt, R, ldx, P, ldx); //fprintf(stderr, "R=\n"); printM2(R, P, P, P);
+    qr(Xt, R, ldx, P, ldx);
     // beta1 <- t(Xt) %*% y
 #ifdef CBLAS
     cblas_dgemv(CblasColMajor, CblasTrans, ldx, P, 1.0, Xt, ldx, y, 1, 0.0, beta+P+1, 1); if(verbose>0){fprintf(stderr, "Xt * y=\n"); printV2(beta+P+1, P);}
 #else
-    dgemvT(Xt, ldx, P, ldx, y, beta+P+1); //fprintf(stderr, "Xt * y=\n"); printV2(beta+P+1, P);
+    dgemvT(Xt, ldx, P, ldx, y, beta+P+1); 
 #endif
     // beta  <- backsolve(R, beta1)
     BackSolve(R, P, beta+P+1, beta);
-    //double th = 15.;
     double th = 15.0;
-    //for(i=0; i<4; i++){if(beta[i]>th){beta[i]=beta0[i];}else if(beta[i]<(-th)){beta[i]=beta0[i];}}
-    for(i=0; i<P; i++){if(isnan(beta[i])>0){fprintf(stderr, "beta[%ld] is NaN\n", i);}}
+    //for(i=0; i<P; i++){if(beta[i]>th){beta[i]=th;}else if(beta[i]<(-th)){beta[i]=th;}}
+    for(i=0; i<P; i++){if(isnan(beta[i])>0){fprintf(stderr, "beta[%ld] is NaN\n", i);beta[i]=beta_prior[i];}}
     if(Itr<1){for(i=0; i<P; i++){beta[i]=beta_prior[i];}}
 }
 
@@ -322,13 +321,13 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
     cblas_dcopy(Pi, beta0, 1, beta, 1);
     cblas_dcopy(Pi, gamma0, 1, gamma, 1);
     // coproducts
-    double* eta;  eta  = (double*)calloc(L, sizeof(double)); // X beta
+    double* eta;  eta  = (double*)calloc(L+Pi, sizeof(double)); // X beta
     //double* Z1;   Z1   = (double*)calloc(nfeatures, sizeof(double)); // 1-Z0j; j=1,...,nfeatures
     //double* z;    z    = (double*)calloc(L, sizeof(double)); // porsterior probs
-    double* y;    y    = (double*)calloc(L, sizeof(double)); // pseudo data : W^1/2 %*% eta + W^1/2 %*% z
-    double* w;    w    = (double*)calloc(L, sizeof(double)); // weights for IRLS : expand(Z1) * pjk
+    double* y;    y    = (double*)calloc(L+Pi, sizeof(double)); // pseudo data : W^1/2 %*% eta + W^1/2 %*% z
+    double* w;    w    = (double*)calloc(L+Pi, sizeof(double)); // weights for IRLS : expand(Z1) * pjk
     //double* pjk;  pjk  = (double*)calloc(L, sizeof(double));  // softmax prior
-    double* Xt;   Xt   = (double*)calloc((L+Pi)*Pi, sizeof(double)); // normalized X & replaced by Q
+    double* Xt;   Xt   = (double*)calloc((L+Pi)*(Pi+1), sizeof(double)); // normalized X & replaced by Q
     double* R;    R    = (double*)calloc(Pi*Pi, sizeof(double)); // upper tri
     double* Ie;   Ie   = (double*)calloc(Pi*Pi*nthreads, sizeof(double));
     //fprintf(stderr, "Memory allocated...\n\n");
@@ -356,7 +355,11 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
         //#  Esteps  #
         //############
         dgemv(U0, nfeatures, Pj+1, nfeatures+Pj, gamma, Pis);// Pi <- U %*% gamma // not yet Pi
-        for(i=0; i<nfeatures; i++){Pis[i]=1./(1.+exp(-Pis[i]));} // Pis <- 1/(1+exp(Pis)))
+        for(i=0; i<nfeatures; i++){
+		Pis[i]=1./(1.+exp(-Pis[i])); 
+//remove
+//if(Pis[i]<1e-20){Pis[i]=1e-20;}else if(Pis[i]>1.-1e-20){Pis[i]=1.-1e-20;}
+        } // Pis <- 1/(1+exp(Pis)))
         for(tid=0; tid<nthreads; tid++){
             pmt[tid].tid    = tid;
             pmt[tid].nfeaturesperthread = nfeaturesperthread;
@@ -393,7 +396,7 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
         for(tid=0; tid<nthreads; tid++){lkhd += pmt[tid].lkhd; if(isnan(pmt[tid].lkhd)>0){fprintf(stderr, "Partial likelihood for thread %d is NaN.\n", tid);} }
         qval = getQval(Z1, Pis, z, pjk, BF, L, nfeatures, X0, beta, Pi, U0, gamma, Pj, &lkhd, lambda); // adding penalty to lkhd
         //lkhd = getQval(Z1, Pis, z, pjk, BF, L, nfeatures, X0, beta, Pi, U0, gamma, Pj, &pen, lambda); // adding penalty to lkhd
-        if(isnan(lkhd)>0 || (lkhd1-lkhd>500. && again<6)){
+        if(isnan(lkhd)>0 || (lkhd1-lkhd>fabs(lkhd)/20. && again<6)){
             if(verbose>0){
                 fprintf(stderr, "[%d]  lkhd=%lf -> %lf\t", itr, lkhd1, lkhd); printV2n(beta, Pi+1); printV2(gamma, Pj+1);
             }
@@ -416,10 +419,13 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
             cblas_dcopy(Pi, beta,  1, beta_old,  1);
             cblas_dcopy(Pj, gamma, 1, gamma_old, 1);
             if(verbose>0)fprintf(stderr, "Mstep in variant level\n");
-            if(Pi>0 && itr>1) Mstep(Xt, X0, R, y, beta, beta0, L, Pi, lambda[0]);
+            if(Pi>0 && itr>1) Mstep(Xt, X0, R, y, beta, beta0, L, Pi, lambda[0], Pis);
+// remove
+if(beta[0]>20.){beta[0]=7.;}
+//if(beta[0]<0.){beta[0]=7.;}
+            //dgemv(U0, nfeatures, Pj+1, nfeatures+Pj, gamma, Pis); for(i=0; i<nfeatures; i++){Pis[i]=1./(1.+exp(-Pis[i]));}
             if(verbose>0){fprintf(stderr, "beta="); printV2(beta, Pi);}
             for(tid=1; tid<nthreads; tid++){for(l=0; l<Pi; l++){for(l2=0; l2<Pi; l2++){Ie[l+l2*Pi]+=Ie[l+l2*Pi+tid*Pi*Pi];}}}
-            
             //###########################
             //# Mstep for feature level #
             //###########################
@@ -429,9 +435,11 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
                 for(j=0; j<Pj; j++){
                     Ut[i+j*(nfeatures+Pj)] = U0[i+j*(nfeatures+Pj)] * sqrt(Pis[i]*(1.-Pis[i]));
                     y2[i] += Ut[i+j*(nfeatures+Pj)]*gamma[j];
+// remove
+//if(isnan(Ut[i+j*(nfeatures+Pj)])>0){fprintf(stderr, "U[%d,%d] is NaN: U0=%lf varPi=%lf\n", i, j, U0[i+j*(nfeatures+Pj)], sqrt(Pis[i]*(1.-Pis[i])));}
                 }
             }
-            if(Pj>0 && itr>1) Mstep(Ut, U0, R2, y2, gamma, gamma0, nfeatures, Pj, lambda[1]);
+            if(Pj>0 && itr>1) Mstep(Ut, U0, R2, y2, gamma, gamma0, nfeatures, Pj, lambda[1], Pis);
             if(verbose>0){fprintf(stderr, "gamma="); printV2(gamma, Pj);}
             //dgemv(U0, nfeatures, Pj+1, nfeatures+Pj, gamma, Pis);// Pi <- U %*% gamma // not yet Pi
             //for(i=0; i<nfeatures; i++){Pis[i]=1./(1.+exp(-Pis[i]));} // Pis <- 1/(1+exp(Pis)))
@@ -514,7 +522,7 @@ long main(long argc, char** argv){
     char* typj = NULL;
     long* nxpi = NULL;
     long* nxpj = NULL;
-    long* cumcoli;
+    long* cumcoli=NULL;
     long* cumcolj;
     long* cumloci;
     long nvari, nvarj;
@@ -527,9 +535,9 @@ long main(long argc, char** argv){
     double** Bsi;
     double** Bsj;
     
-    double* X;
+    double* X=NULL;
     double* U;
-    double* bf;
+    double* bf=NULL;
     
     for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-f")==0 || strcmp(argv[i], "--n-features")==0){ nfeatures = (long)atoi(argv[i+1]); }}
     for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-r")==0 || strcmp(argv[i], "--n-rows")==0){ nrow = (long)atoi(argv[i+1]); }}
@@ -569,7 +577,8 @@ long main(long argc, char** argv){
             X = (double*)calloc((nrow+Pi)*(Pi+1), sizeof(double));
             bf= (double*)calloc(nrow,        sizeof(double));
             cumloci = (long*)calloc(nfeatures+1, sizeof(double));
-            readTable(fi, X, bf, typi, nxpi, Xki, Bsi, nrow, pi, cumloci, cumcoli, Pi, 100.0);
+            if(X==NULL || bf==NULL || cumloci==NULL){fprintf(stderr, "Memory allocation failed...aborted.\n"); return 1;}
+            readTable(fi, X, bf, typi, nxpi, Xki, Bsi, nrow, pi, cumloci, cumcoli, Pi, .01);
             if(verbose>0){ 
                 //fprintf(stderr, "cumloci: "); printVL(cumloci, nfeatures+1);
                 //fprintf(stderr, "cumcoli: "); printVL(cumcoli, nvari+1);
@@ -614,7 +623,7 @@ long main(long argc, char** argv){
             if(typj==NULL){fprintf(stderr, "No column information for %s\n", argv[i+1]); return 1;}
             
             U = (double*)calloc((nfeatures+Pj)*(Pj+1), sizeof(double)); for(j=0; j<nfeatures; j++){U[j]=1.0;}
-            readTable(fj, U, NULL, typj, nxpj, Xkj, Bsj, nfeatures, pj, NULL, cumcolj, Pj, 100.0);
+            readTable(fj, U, NULL, typj, nxpj, Xkj, Bsj, nfeatures, pj, NULL, cumcolj, Pj, 10.0);
             if(verbose>0){
                 //printM(U, nfeatures+Pj, Pj+1);
                 printM2(U+nfeatures, Pj, Pj+nfeatures, Pj);
@@ -631,11 +640,11 @@ long main(long argc, char** argv){
     
     double* beta; beta  = (double*)calloc((Pi+1)*2+Pi*Pi, sizeof(double)); // coef length Pi + 1 + working space for another Pi + 1
     double* gamma;gamma = (double*)calloc((Pj+1)*2+Pj*Pj, sizeof(double)); // (Pj + 1) x 2
-    double* Z1;   Z1   = (double*)calloc(nfeatures, sizeof(double)); // 1-Z0j; j=1,...,nfeatures
-    double* z;    z    = (double*)calloc(nrow, sizeof(double)); // porsterior probs
-    double* pjk;  pjk  = (double*)calloc(nrow, sizeof(double));  // softmax prior
+    double* Z1;   Z1   = (double*)calloc(nfeatures+Pj, sizeof(double)); // 1-Z0j; j=1,...,nfeatures
+    double* z;    z    = (double*)calloc(nrow+Pi, sizeof(double)); // porsterior probs
+    double* pjk;  pjk  = (double*)calloc(nrow+Pi, sizeof(double));  // softmax prior
     
-    double* Pis;  Pis= (double*)calloc(nfeatures, sizeof(double)); for(i=0; i<nfeatures; i++){Pis[i]=0.075;}
+    double* Pis;  Pis= (double*)calloc(nfeatures+Pj, sizeof(double)); for(i=0; i<nfeatures; i++){Pis[i]=0.0105;}
     
     // Init parameter setting
     beta0 =  (double*)calloc((Pi+1)*2, sizeof(double)); // coef length Pi + 1 + working space for another Pi + 1
