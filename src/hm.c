@@ -573,7 +573,7 @@ long main(long argc, char** argv){
             }
             nvari = l;
             if(typi==NULL){fprintf(stderr, "No column information for %s\n", argv[i+1]); return 1;}
-            
+            if(verbose>0) fprintf(stderr, "Loading table (nrows=%d nfeatures=%d) started...", nrow, nfeatures);
             X = (double*)calloc((nrow+Pi)*(Pi+1), sizeof(double));
             bf= (double*)calloc(nrow,        sizeof(double));
             cumloci = (long*)calloc(nfeatures+1, sizeof(double));
