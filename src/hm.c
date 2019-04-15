@@ -3,9 +3,9 @@
 #include "usage.h"
 
 
-double L2dist(double* x, double* y, int n){
+double L2dist(double* x, double* y, long n){
     double res = 0.0;
-    int i;
+    long i;
     for(i=0; i<n; i++){ res += (x[i]-y[i])*(x[i]-y[i]); }
     return res;
 }
@@ -22,16 +22,16 @@ int cmpdr (const void * a, const void * b){
 }
 
 // P = expanded ncol
-int readTable(gzFile f, double* X, double* bf, char* type, int* nexp, double** Xk, double** Bs, int nrow, int ncol, int* cumloci, int* cumcol, int P, double sigma){
+long readTable(gzFile f, double* X, double* bf, char* type, long* nexp, double** Xk, double** Bs, long nrow, long ncol, long* cumloci, long* cumcol, long P, double sigma){
     // j all col in f
     // l only N & C
     // cumcol only N & C
-    int i, j, k=0, l, m;
-    int ldx = nrow + P;
+    long i, j, k=0, l, m;
+    long ldx = nrow + P;
     char c;
     char* cell; cell = (char*)calloc(1000, sizeof(char));
     double dcell;
-    int lcell;
+    long lcell;
     gzseek(f, 0L, SEEK_SET);
     for(i=0; i<nrow; i++){
         l=0;
@@ -100,8 +100,8 @@ int readTable(gzFile f, double* X, double* bf, char* type, int* nexp, double** X
 }
 
 
-void dgemv(double* A, int N, int M, int lda, double* x, double* y){
-    int i, j;
+void dgemv(double* A, long N, long M, long lda, double* x, double* y){
+    long i, j;
     for(i=0; i<N; i++){
         y[i] = 0.0;
         for(j=0; j<M; j++){
@@ -111,8 +111,8 @@ void dgemv(double* A, int N, int M, int lda, double* x, double* y){
 }
 
 
-void dgemvT(double* A, int N, int M, int lda, double* x, double* y){
-    int i, j;
+void dgemvT(double* A, long N, long M, long lda, double* x, double* y){
+    long i, j;
     for(j=0; j<M; j++){
         y[j] = 0.0;
         for(i=0; i<N; i++){
@@ -126,18 +126,18 @@ void dgemvT(double* A, int N, int M, int lda, double* x, double* y){
 void* Estep(void *args){
     HIERARCHICAL_MT* pmt = (HIERARCHICAL_MT *)args;
     
-    int tid = pmt->tid;
-    int nfeaturesperthread = pmt->nfeaturesperthread;
+    long tid = pmt->tid;
+    long nfeaturesperthread = pmt->nfeaturesperthread;
     
-    int P = pmt->Pi;
+    long P = pmt->Pi;
     
-    int nfeatures = pmt->nfeatures;
-    int* cumloci; cumloci = pmt->cumloci;
-    int L = cumloci[nfeatures];
+    long nfeatures = pmt->nfeatures;
+    long* cumloci; cumloci = pmt->cumloci;
+    long L = cumloci[nfeatures];
     
-    int ldx = L+P;
+    long ldx = L+P;
     
-    fprintf(stderr, "L=%d P=%d tid=%d nppt=%d\n", L, P, tid, nfeaturesperthread);
+    //fprintf(stderr, "L=%d P=%d tid=%d nppt=%d\n", L, P, tid, nfeaturesperthread);
     
     double* X0; X0 = pmt->X0;
     double* BF; BF = pmt->BF;
@@ -159,7 +159,7 @@ void* Estep(void *args){
     double* xb; xb = (double*)calloc(P, sizeof(double));
     double* XjTZj; XjTZj = (double*)calloc(P, sizeof(double));
     
-    int j, k, l, l2, pstart = tid*nfeaturesperthread, pend, nanflag=0;;
+    long j, k, l, l2, pstart = tid*nfeaturesperthread, pend, nanflag=0;;
     pend = ((tid+1)*nfeaturesperthread < nfeatures) ? (tid+1)*nfeaturesperthread : nfeatures;
     for(j=pstart; j<pend; j++){if(cumloci[j+1]-cumloci[j]>0){
         // eta <- X, beta
@@ -230,9 +230,9 @@ void* Estep(void *args){
 
 
 
-int Itr;
-void Mstep(double* Xt, double* X0, double* R, double* y, double* beta, double* beta_prior, int L, int P, double lambda, double* Pis){
-    int i, j, ldx = P+L;
+long Itr;
+void Mstep(double* Xt, double* X0, double* R, double* y, double* beta, double* beta_prior, long L, long P, double lambda, double* Pis){
+    long i, j, ldx = P+L;
     for(i=0; i<P; i++){
         y[L+i]=0.0;
         for(j=0; j<P; j++){
@@ -259,12 +259,12 @@ void Mstep(double* Xt, double* X0, double* R, double* y, double* beta, double* b
 
 
 
-double getQval(double* Z1, double* Pis, double* z, double* pjk, double* BF, int L, int nfeatures, double* X0, double* beta, int Pi, double* U0, double* gamma, int Pj, double* plkhd, double* lambda){
+double getQval(double* Z1, double* Pis, double* z, double* pjk, double* BF, long L, long nfeatures, double* X0, double* beta, long Pi, double* U0, double* gamma, long Pj, double* plkhd, double* lambda){
     double pen = 0.0;
-    int i, j;
+    long i, j;
     double tmp;
-    int ldx = L+Pi;
-    int ldu = nfeatures+Pj;
+    long ldx = L+Pi;
+    long ldu = nfeatures+Pj;
     // variant level
     for(i=0; i<Pi; i++){
         tmp = 0.0;
@@ -286,20 +286,20 @@ double getQval(double* Z1, double* Pis, double* z, double* pjk, double* BF, int 
 }
 
 
-int em(double* X0, double* BF, int L, int Pi, double* U0, int nfeatures, int Pj, int* cumloci, double* beta, double* gamma, double* Pis, double* pjk, double* Z1, double* z, int nthreads, double* plkhd){
-    int i, j, k, l, l2;
+long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, long Pj, long* cumloci, double* beta, double* gamma, double* Pis, double* pjk, double* Z1, double* z, long nthreads, double* plkhd){
+    long i, j, k, l, l2;
     
     if(verbose>0)fprintf(stderr, "Model fitting started...\n\n");
     if(verbose>0)fprintf(stderr, "em: L=%ld Pi=%ld nfeatures=%ld \n", L, Pi, nfeatures);
     
-    //int Pj = 1;
+    //long Pj = 1;
     //double* U; U = (double*)calloc(nfeatures*Pj, sizeof(double)); for(i=0; i<nfeatures; i++){U[i]=1.;}
     
     
-    int tid;
+    long tid;
     HIERARCHICAL_MT* pmt; pmt=(HIERARCHICAL_MT*)calloc(nthreads, sizeof(HIERARCHICAL_MT));
     pthread_t* pid;       pid=(pthread_t*)calloc(nthreads, sizeof(pthread_t));
-    int nfeaturesperthread  = nfeatures / nthreads + 1;
+    long nfeaturesperthread  = nfeatures / nthreads + 1;
     
     // parameters
     double sigma = 10.;
@@ -340,12 +340,12 @@ int em(double* X0, double* BF, int L, int Pi, double* U0, int nfeatures, int Pj,
     
     
     
-    int itr;
+    long itr;
     
-    int again=0;
+    long again=0;
     double lkhd, lkhd1=-1.0e10, pen;
     double qval, qval1=-1.0e10;
-    int conv=0;
+    long conv=0;
     if(verbose>0){fprintf(stderr, "Iteration starts...\n");}
     for(itr=0; itr<10000; itr++){
         Itr=itr;
@@ -379,14 +379,14 @@ int em(double* X0, double* BF, int L, int Pi, double* U0, int nfeatures, int Pj,
             pmt[tid].lkhd = 0.0;
             //Estep(pmt);
             
-            int pthflag;
+            long pthflag;
             if( (pthflag = pthread_create(pid+tid, NULL, (void*)Estep, (void*)(pmt+tid))) != 0){
                 fprintf(stderr, "Thread not created...aborted.\n");
                 return -9999;
             }
         }
         for(tid=0; tid<nthreads; tid++){
-            int pthflag;
+            long pthflag;
             if( (pthflag = pthread_join(pid[tid], NULL)) !=0 ){fprintf(stderr, "Thread not joined...aborted.\n"); return -9999;};
         }
         
@@ -477,13 +477,13 @@ if(beta[0]>20.){beta[0]=7.;}
 
 }
 
-int parseCol(char* s, char** type, int** nexp){
-    int i, n=1, m, mtot;
+long parseCol(char* s, char** type, long** nexp){
+    long i, n=1, m, mtot;
     for(i=0; i<strlen(s); i++){
         if(s[i]==','){n++;}
     }
     type[0] = (char*)calloc(n, sizeof(char));
-    nexp[0] = (int*)calloc(n, sizeof(int));
+    nexp[0] = (long*)calloc(n, sizeof(long));
     mtot = m = 0;
     for(i=0; i<n; i++){
         if(s[mtot+1]==','){
@@ -496,8 +496,8 @@ int parseCol(char* s, char** type, int** nexp){
     return n;
 }
 
-int countP(char** type, int** nexp, int n){
-    int i, P=0;
+long countP(char** type, long** nexp, long n){
+    long i, P=0;
     for(i=0; i<n; i++){
         if(type[0][i]=='N'){// numeric
             P += 1 + nexp[0][i];
@@ -508,8 +508,8 @@ int countP(char** type, int** nexp, int n){
     return P;
 }
 
-int main(int argc, char** argv){
-    int i, j, k, l;
+long main(long argc, char** argv){
+    long i, j, k, l;
    
     if(argc==1){usage_hm(); return 1;} 
     verbose = 0; for(i=0; i<argc; i++){if(strcmp(argv[i], "-v")==0 || strcmp(argv[i], "--verbose")==0){ verbose=1; }}
@@ -518,15 +518,15 @@ int main(int argc, char** argv){
     gzFile fj = NULL; // j = feature level
     char* typi = NULL;
     char* typj = NULL;
-    int* nxpi = NULL;
-    int* nxpj = NULL;
-    int* cumcoli=NULL;
-    int* cumcolj;
-    int* cumloci;
-    int nvari, nvarj;
-    int nfeatures=0;
-    int pi, pj, Pi, Pj;// numbers of col and expanded col (p & P)
-    int nrow=2;
+    long* nxpi = NULL;
+    long* nxpj = NULL;
+    long* cumcoli=NULL;
+    long* cumcolj;
+    long* cumloci;
+    long nvari, nvarj;
+    long nfeatures=0;
+    long pi, pj, Pi, Pj;// numbers of col and expanded col (p & P)
+    long nrow=2;
     
     double** Xki;
     double** Xkj;
@@ -537,8 +537,8 @@ int main(int argc, char** argv){
     double* U;
     double* bf=NULL;
     
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-f")==0 || strcmp(argv[i], "--n-features")==0){ nfeatures = (int)atoi(argv[i+1]); }}
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-r")==0 || strcmp(argv[i], "--n-rows")==0){ nrow = (int)atoi(argv[i+1]); }}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-f")==0 || strcmp(argv[i], "--n-features")==0){ nfeatures = (long)atoi(argv[i+1]); }}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-r")==0 || strcmp(argv[i], "--n-rows")==0){ nrow = (long)atoi(argv[i+1]); }}
     
     double lbfoffs=0.0;
     for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--lbf-offset")==0){ lbfoffs = (double)atof(argv[i+1]); }}
@@ -553,7 +553,7 @@ int main(int argc, char** argv){
                     Pi = countP(&typi, &nxpi, pi);
                     Xki = (double**)calloc(pi, sizeof(double*));
                     Bsi = (double**)calloc(pi, sizeof(double*));
-                    cumcoli = (int*)calloc(Pi+1, sizeof(int));cumcoli[0]=0;
+                    cumcoli = (long*)calloc(Pi+1, sizeof(long));cumcoli[0]=0;
                     l=0;
                     for(k=0; k<pi; k++){
                         if(verbose>0)fprintf(stderr, "%ld %c %ld\n", Pi, typi[k], nxpi[k]);
@@ -576,10 +576,10 @@ int main(int argc, char** argv){
             if(verbose>0) fprintf(stderr, "Loading table (nrows=%d nfeatures=%d) started...", nrow, nfeatures);
             X = (double*)calloc(((long)nrow+(long)Pi)*((long)Pi+1), sizeof(double));
             bf= (double*)calloc(nrow,        sizeof(double));
-            cumloci = (int*)calloc(nfeatures+1, sizeof(double));
+            cumloci = (long*)calloc(nfeatures+1, sizeof(double));
             if(X==NULL || bf==NULL || cumloci==NULL){fprintf(stderr, "Memory allocation failed...aborted.\n"); return 1;}
             readTable(fi, X, bf, typi, nxpi, Xki, Bsi, nrow, pi, cumloci, cumcoli, Pi, 1.);
-            int ii; for(ii=0; ii<nrow; ii++){bf[ii] *= exp(lbfoffs);} // bf offset
+            long ii; for(ii=0; ii<nrow; ii++){bf[ii] *= exp(lbfoffs);} // bf offset
             if(verbose>0){ 
                 //fprintf(stderr, "cumloci: "); printVL(cumloci, nfeatures+1);
                 //fprintf(stderr, "cumcoli: "); printVL(cumcoli, nvari+1);
@@ -602,7 +602,7 @@ int main(int argc, char** argv){
                     Pj = countP(&typj, &nxpj, pj)+1;// +1 for intersept
                     Xkj = (double**)calloc(pj, sizeof(double*));
                     Bsj = (double**)calloc(pj, sizeof(double*));
-                    cumcolj = (int*)calloc(Pj+1, sizeof(int)); cumcolj[0]=1;
+                    cumcolj = (long*)calloc(Pj+1, sizeof(long)); cumcolj[0]=1;
                     l=0;
                     for(k=0; k<pj; k++){
                         if(verbose>0)fprintf(stderr, "%ld %c %ld\n", Pj, typj[k], nxpj[k]);
@@ -679,11 +679,11 @@ int main(int argc, char** argv){
     
     
     
-    int nthreads = 1;
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-t")==0 || strcmp(argv[i], "--n-threads")==0){ nthreads = (int)atoi(argv[i+1]); }}
+    long nthreads = 1;
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-t")==0 || strcmp(argv[i], "--n-threads")==0){ nthreads = (long)atoi(argv[i+1]); }}
     
     double lkhd;
-    int itr;
+    long itr;
     itr = em(X, bf, nrow, Pi, U, nfeatures, Pj, cumloci, beta, gamma, Pis, pjk, Z1, z, nthreads, &lkhd);
     
     
@@ -751,7 +751,7 @@ int main(int argc, char** argv){
         sprintf(ofname, "%s/credible_set.gz", prefix);
         gzFile nplocif; nplocif = gzopen(ofname, "wb6f");
         double postth[]={0.9, 0.95, 0.99};
-        int    nlocij[]={0,0,0};
+        long    nlocij[]={0,0,0};
         double plocij=0.0;
         for(j=0; j<nfeatures; j++){
             qsort(z+cumloci[j], cumloci[j+1]-cumloci[j], sizeof(double), cmpdr);

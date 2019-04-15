@@ -1,23 +1,23 @@
 #include "util.h"
 
-void printV(double* x, int n){
-    int i;
+void printV(double* x, long n){
+    long i;
     for(i=0; i<n; i++){
         fprintf(stdout, "%lf,", x[i]);
     }
     fprintf(stdout, "\n");
 }
 
-void printVL(int* x, int n){
-    int i;
+void printVL(long* x, long n){
+    long i;
     for(i=0; i<n; i++){
         fprintf(stdout, "%ld,", x[i]);
     }
     fprintf(stdout, "\n");
 }
 
-void printM(double* x, int n, int m){
-    int i, j;
+void printM(double* x, long n, long m){
+    long i, j;
     for(i=0; i<n; i++){
         for(j=0; j<m; j++){
             fprintf(stdout, "%lf,", x[i+j*n]);
@@ -26,8 +26,8 @@ void printM(double* x, int n, int m){
     }
 }
 
-void printM2(double* x, int n, int ldx, int m){
-    int i, j;
+void printM2(double* x, long n, long ldx, long m){
+    long i, j;
     for(i=0; i<n; i++){
         for(j=0; j<m; j++){
             fprintf(stderr, "%lf,", x[i+j*ldx]);
@@ -36,34 +36,34 @@ void printM2(double* x, int n, int ldx, int m){
     }
 }
 
-int endWith(char* x, char* y){
-    int i;
-    int nx = strlen(x);
-    int ny = strlen(y);
+long endWith(char* x, char* y){
+    long i;
+    long nx = strlen(x);
+    long ny = strlen(y);
     for(i=0; i<ny; i++){
         if(x[nx-1-i]!=y[ny-1-i]){return 0;}
     }
     return 1;
 }
 
-void printV2L(double* x, int n, int ldx){
-    int i;
+void printV2L(double* x, long n, long ldx){
+    long i;
     for(i=0; i<n; i++){
         fprintf(stderr, "%lf,", x[i*ldx]);
     }
 }
 
 
-void printV2n(double* x, int n){
-    int i;
+void printV2n(double* x, long n){
+    long i;
     for(i=0; i<n; i++){
         fprintf(stderr, "%lf,", x[i]);
     }
 }
 
 
-void printV2(double* x, int n){
-    int i;
+void printV2(double* x, long n){
+    long i;
     for(i=0; i<n; i++){
         fprintf(stderr, "%lf,", x[i]);
     }
@@ -71,8 +71,8 @@ void printV2(double* x, int n){
 }
 
 
-int mini(int a, int b){return a<b ? a : b;}
-int maxi(int a, int b){return a>b ? a : b;}
+long mini(long a, long b){return a<b ? a : b;}
+long maxi(long a, long b){return a>b ? a : b;}
 
 double logit(double x){
     return log(x/(1.-x));
@@ -83,8 +83,8 @@ double expit(double x){
 double rk1(double x, double z){
     return ((z-0.5)*(z-0.5)-1./12.)*((x-0.5)*(x-0.5)-1./12.)/4. - (pow(fabs(x-z)-0.5, 4.)-(fabs(x-z)-0.5)*(fabs(x-z)-0.5)/2. + 7./240.)/24.;
 }
-void rk(double* x0, double* x, double* xk, int n, int nk){
-    int i, j;
+void rk(double* x0, double* x, double* xk, long n, long nk){
+    long i, j;
     for(i=0; i<n; i++){
         if(x0[i]>=0.0){
             x[i] = x0[i];
@@ -97,8 +97,8 @@ void rk(double* x0, double* x, double* xk, int n, int nk){
 
 
 
-void expand(int* pos, double* val, int n, int* pos2, double* val2, int n2, double* w){// n < n2
-    int i=0, j=0;
+void expand(long* pos, double* val, long n, long* pos2, double* val2, long n2, double* w){// n < n2
+    long i=0, j=0;
     while(i<n){
         if(pos2[j]<pos[i]){
             j++;
@@ -113,8 +113,8 @@ void expand(int* pos, double* val, int n, int* pos2, double* val2, int n2, doubl
     }
 }
 
-void multisoftmax(double* eta, double* p, int N, int H){
-    int i, j;
+void multisoftmax(double* eta, double* p, long N, long H){
+    long i, j;
     double tot, geta;
     for(i=0; i<N/H; i++){
         geta = -100.0;
@@ -132,8 +132,8 @@ void multisoftmax(double* eta, double* p, int N, int H){
     }
 }
 
-int softmax(double* eta, double* y, int n){
-    int i;
+long softmax(double* eta, double* y, long n){
+    long i;
     double offs=0.0, tot=0.0;
     for(i=0; i<n; i++){
         if(offs < eta[i]-20.0){offs = eta[i]-20.0;}
@@ -148,8 +148,8 @@ int softmax(double* eta, double* y, int n){
     return (tot>0.0 ? 0 : 1);
 }
 
-void wsoftmax(double* eta, double* y, double* w, int n){
-    int i;
+void wsoftmax(double* eta, double* y, double* w, long n){
+    long i;
     double offs=0.0, tot=0.0;
     for(i=0; i<n; i++){if(w[i]>0.5){
         if(offs < eta[i]-20.0){offs = eta[i]-20.0;}
@@ -163,14 +163,14 @@ void wsoftmax(double* eta, double* y, double* w, int n){
     }else{y[i] = 0.0;}}
 }
 
-void clearAs0(double* x, int n){
-    int i;
+void clearAs0(double* x, long n){
+    long i;
     for(i=0; i<n; i++){x[i]=0.0;}
 }
 
-void sumTo1(double* x, int n){
+void sumTo1(double* x, long n){
     double tot=0.0;
-    int i;
+    long i;
     for(i=0; i<n; i++){tot += x[i];}
     for(i=0; i<n; i++){x[i] /= tot;}
 }
@@ -186,15 +186,15 @@ void sumTo1(double* x, int n){
 
 
 
-int lmin(int a, int b){
+long lmin(long a, long b){
     if(a>b){return b;}
     return a;
 }
 
 
 
-double nk_mean2(double* x, double* y, int n, int ldx){
-    int i;
+double nk_mean2(double* x, double* y, long n, long ldx){
+    long i;
     double res=0.0;
     double dn = (double)n;
     for(i=0; i<n; i++){res += x[i*ldx]*y[i*ldx] / dn;}
@@ -202,43 +202,43 @@ double nk_mean2(double* x, double* y, int n, int ldx){
 }
 
 
-double nk_mean(double* x, int n, int ldx){
-    int i;
+double nk_mean(double* x, long n, long ldx){
+    long i;
     double res=0.0;
     double dn = (double)n;
     for(i=0; i<n; i++){res += x[i*ldx] / dn;}
     return res;
 }
 
-double nk_dsum(double* x, int n, int ldx){
-    int i;
+double nk_dsum(double* x, long n, long ldx){
+    long i;
     double res=0.0;
     double dn = (double)n;
     for(i=0; i<n; i++){res += x[i*ldx];}
     return res;
 }
 
-double nk_lsum2(double* x, double* p, int n, int ldx){
-    int i;
+double nk_lsum2(double* x, double* p, long n, long ldx){
+    long i;
     double res=0.0;
     for(i=0; i<n; i++){res += x[i*ldx]*log(p[i*ldx]);}
     return res;
 }
 
-double nk_lsum3(double* x, double* p, int n, int ldx){
-    int i;
+double nk_lsum3(double* x, double* p, long n, long ldx){
+    long i;
     double res=0.0;
     for(i=0; i<n; i++){res += x[i*ldx]*log(p[i*ldx]) + (1.-x[i*ldx])*log(1.-p[i*ldx]);}
     return res;
 }
 
-char dim(gzFile f, int* pN, int* pP, int skip){// N x P matrix
+char dim(gzFile f, long* pN, long* pP, long skip){// N x P matrix
     
-    int N=0;
-    int P=0;
-    int i;
+    long N=0;
+    long P=0;
+    long i;
     char sep;
-    int ret;
+    long ret;
     char c;
     while((c=gzgetc(f)) != EOF){
         if(N==0+skip && (c=='\n'||c==' '||c=='\t'||c==',')){
@@ -254,17 +254,17 @@ char dim(gzFile f, int* pN, int* pP, int skip){// N x P matrix
 }
 
 
-int getXk(double** xk, int n){
-    int i;
+long getXk(double** xk, long n){
+    long i;
     xk[0] = (double*)calloc(n, sizeof(double));
     for(i=0; i<n; i++){
         xk[0][i] = ((double)i+1.-3./8.)/((double)n+1.-2.*3./8.);
     }
 }
 
-int getBS(double** bs, double* xk, int n){
+long getBS(double** bs, double* xk, long n){
     bs[0] = (double*)calloc(n*n, sizeof(double));
-    int i, j;
+    long i, j;
     clearAs0(bs[0], n*n);
     for(i=0; i<n; i++){
         for(j=i; j<n; j++){
@@ -274,13 +274,13 @@ int getBS(double** bs, double* xk, int n){
     char uplo = 'U';
     long nn=(long)n, lda=(long)n, info;
     dpotrf_(&uplo, &nn, bs[0], &lda, &info);
-    return (int)info;
+    return (long)info;
 }
 
 
-int setBS(double* xk, int n){
+long setBS(double* xk, long n){
     BS = (double*)calloc(n*n, sizeof(double));
-    int i, j;
+    long i, j;
     clearAs0(BS, n*n);
     for(i=0; i<n; i++){
         for(j=i; j<n; j++){
@@ -290,12 +290,12 @@ int setBS(double* xk, int n){
     char uplo = 'U';
     long nn=(long)n, lda=(long)n, info;
     dpotrf_(&uplo, &nn, BS, &lda, &info);
-    return (int)info;
+    return (long)info;
 }
-int setBS2(double* xk, int n){
-    int np2=n+2;
+long setBS2(double* xk, long n){
+    long np2=n+2;
     BS = (double*)calloc(np2*np2*np2*np2, sizeof(double));
-    int i, j, k;
+    long i, j, k;
     clearAs0(BS, np2*np2*np2*np2);
     
     for(i=2; i<np2; i++){
@@ -326,19 +326,19 @@ int setBS2(double* xk, int n){
         }
     }
             
-    return (int)info;
+    return (long)info;
 }
 
 
-void clear1(double* x, int n){
-    int i;
+void clear1(double* x, long n){
+    long i;
     for(i=0; i<n; i++){
         x[i] = 0.0;
     }
 }
 
-double nk_ddot(int n, double* x, int incx, double* y, int incy){
-    int i;
+double nk_ddot(long n, double* x, long incx, double* y, long incy){
+    long i;
     double res=0.0;
     for(i=0; i<n; i++){
         res += x[i]*y[i];
@@ -346,30 +346,30 @@ double nk_ddot(int n, double* x, int incx, double* y, int incy){
     return res;
 }
 
-double nk_dnrm2(int n, double* x, int incx){
+double nk_dnrm2(long n, double* x, long incx){
     return sqrt(nk_ddot(n, x, incx, x, incx));
 }
 
-void nk_daxpy(int n, double a, double* x, int incx, double* y, int incy){
-    int i;
+void nk_daxpy(long n, double a, double* x, long incx, double* y, long incy){
+    long i;
     for(i=0; i<n; i++){
         y[i] += a * x[i];
     }
 }
 
-void nk_dscal(int n, double a, double* x, int incx){
-    int i;
+void nk_dscal(long n, double a, double* x, long incx){
+    long i;
     for(i=0; i<n; i++){
         x[i] *= a;
     }
 }
 
 
-void qr(double* X, double* R, int n, int p, int ldx){
+void qr(double* X, double* R, long n, long p, long ldx){
     // QR decomp using Gram-Schmidt orthogonalization
     // X is replaced by Q
 
-        int i, j;
+        long i, j;
 
         clear1(R, p*p);
 
@@ -386,7 +386,7 @@ void qr(double* X, double* R, int n, int p, int ldx){
 }
 
 
-void qr_lapack(double* A, double* R, int M, int N, int lda){
+void qr_lapack(double* A, double* R, long M, long N, long lda){
     long lM=(long)M, lN=(long)N;
     long lwork = ((long)N)*((long)N);
     long info;
@@ -397,8 +397,8 @@ void qr_lapack(double* A, double* R, int M, int N, int lda){
     dgeqrf_(&lM, &lN, A, &llda, tau, work, &lwork, &info);
     fprintf(stderr, "dgeqrf=%d\n", info);
     
-    int K = N;
-    int i,j;
+    long K = N;
+    long i,j;
     for(i=0; i<N; i++){
         for(j=i; j<N; j++){
             R[i+j*N] = A[i+j*lda];
@@ -414,10 +414,10 @@ void qr_lapack(double* A, double* R, int M, int N, int lda){
 }
 
 
-void ForwardSolve(double* R, int p, double* y, double* x){
+void ForwardSolve(double* R, long p, double* y, double* x){
     // To solve R^T x = y
     // ldy : leading dim of y
-    int i, j;
+    long i, j;
     clearAs0(x, p);
     
     x[0] = y[0]/R[0];
@@ -433,9 +433,9 @@ void ForwardSolve(double* R, int p, double* y, double* x){
 }
 
 
-void BackSolve(double* R, int p, double* y, double* x){
+void BackSolve(double* R, long p, double* y, double* x){
     // To solve y = R x
-    int i, j;
+    long i, j;
     clearAs0(x, p);
     
     x[p-1] = y[p-1]/R[p*p-1];

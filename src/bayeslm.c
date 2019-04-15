@@ -2,6 +2,7 @@
 #include "util_bayeslm.h"
 #include "usage.h"
 
+
 int startWith(const char *pre, const char *str)
 {
     return strncmp(pre, str, strlen(pre));
