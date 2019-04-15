@@ -26,13 +26,13 @@
 
 
 typedef struct{
-        long tid;  // thread id
-        //long npeaksperthread;  // number of peaks processed [tid*npeaks ... (tid+1)*npeaks-1]
-        //long npeaks;  // total peaks
-        //long nvars;
-        //long* cumloci;
-        //long* cumcats;
-        //long P;
+        int tid;  // thread id
+        //int npeaksperthread;  // number of peaks processed [tid*npeaks ... (tid+1)*npeaks-1]
+        //int npeaks;  // total peaks
+        //int nvars;
+        //int* cumloci;
+        //int* cumcats;
+        //int P;
         //double* X;
         //double* BF;
 
@@ -50,22 +50,22 @@ typedef struct{
         //double* Ie;
         //double lkhd;
 	
-	long a;
-	long b;
+	int a;
+	int b;
 	double* y;
 	double* bf;
 	double* X;
 	double* beta;
 	double* pphi;
-	long N;
-	long P;
-	long LDX;
-	long H;
+	int N;
+	int P;
+	int LDX;
+	int H;
 	double* Xt;
 	double* p;
 	double* w;
 	double* eta;
 	double* z;
-	long offs;
+	int offs;
 	double lkhd;
 }HIERARCHICAL2_MT;

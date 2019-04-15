@@ -10,7 +10,7 @@ void randomise(double* y, int n);
 void randomise2(double* y, double* y2, int m, int n);
 
 double rk1(double x, double z);
-void rk(double* x0, double* x, double* xk, long n, long nk);
+void rk(double* x0, double* x, double* xk, int n, int nk);
 
 void printV(double* x, int n);
 void printV2(double* x, int n);

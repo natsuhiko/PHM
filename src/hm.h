@@ -26,12 +26,12 @@ double* beta0;
 double* gamma0;
 
 typedef struct{
-	long tid;  // thread id
-        long nfeaturesperthread;  // number of peaks processed [tid*npeaks ... (tid+1)*npeaks-1]
-	long nfeatures;  // total peaks
-	long* cumloci;
-	long Pi;
-	long Pj;
+	int tid;  // thread id
+        int nfeaturesperthread;  // number of peaks processed [tid*npeaks ... (tid+1)*npeaks-1]
+	int nfeatures;  // total peaks
+	int* cumloci;
+	int Pi;
+	int Pj;
 	double* X0;
 	double* BF;
 

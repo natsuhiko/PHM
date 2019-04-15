@@ -2,16 +2,16 @@
 #include "phm.h"
 #include "usage.h"
 
-long readTable(gzFile f, double* X, double* bf, char* type, long* nexp, double** Xk, double** Bs, long nrow, long ncol, long* id1, long* id2, long* cumcol, long P, double sigma){
+int readTable(gzFile f, double* X, double* bf, char* type, int* nexp, double** Xk, double** Bs, int nrow, int ncol, int* id1, int* id2, int* cumcol, int P, double sigma){
     // j all col in f
     // l only N & C
     // cumcol only N & C
-    long i, j, k=0, l, m;
-    long ldx = nrow*3 + P*2;
+    int i, j, k=0, l, m;
+    int ldx = nrow*3 + P*2;
     char c;
     char* cell; cell = (char*)calloc(1000, sizeof(char));
     double dcell;
-    long lcell;
+    int lcell;
     double* bftemp; bftemp = (double*)calloc(10, sizeof(double));
     gzseek(f, 0L, SEEK_SET);
     for(i=0; i<nrow; i++){
@@ -96,16 +96,16 @@ long readTable(gzFile f, double* X, double* bf, char* type, long* nexp, double**
 
 
 
-int getPeakwiseAnnot(long* id1, long* id2, double* Z, long nrow, long npeaks, double* p, double* q, double* tss, double* we, long* parent, double* maxparent){
-    long pi, i, j, k;
+int getPeakwiseAnnot(int* id1, int* id2, double* Z, int nrow, int npeaks, double* p, double* q, double* tss, double* we, int* parent, double* maxparent){
+    int pi, i, j, k;
     // 0 start
     for(i=0; i<nrow; i++){id1[i]--; id2[i]--;}
     // locations of peak j first seen
-    long* f1; f1 = (long*)calloc(npeaks, sizeof(long));
-    long* f2; f2 = (long*)calloc(npeaks, sizeof(long));
-    long* e1; e1 = (long*)calloc(npeaks, sizeof(long));
-    long* e2; e2 = (long*)calloc(npeaks, sizeof(long));
-    long k1=0, k2=0;
+    int* f1; f1 = (int*)calloc(npeaks, sizeof(int));
+    int* f2; f2 = (int*)calloc(npeaks, sizeof(int));
+    int* e1; e1 = (int*)calloc(npeaks, sizeof(int));
+    int* e2; e2 = (int*)calloc(npeaks, sizeof(int));
+    int k1=0, k2=0;
     // init
     for(j=0; j<npeaks; j++){
         f1[j] = f2[j] = e1[j] = e2[j] = -1;
@@ -161,8 +161,8 @@ int getPeakwiseAnnot(long* id1, long* id2, double* Z, long nrow, long npeaks, do
 
 
 
-void RX(double* R, double* X, long H, long P, long ldx, double* Xt){
-    long i, j, k;
+void RX(double* R, double* X, int H, int P, int ldx, double* Xt){
+    int i, j, k;
     for(i=0; i<H; i++){// H : num of alt hypos
         for(j=0; j<P; j++){// P : num of covariates
             Xt[i+j*ldx] = 0.0;
@@ -184,8 +184,8 @@ int makeW3(double* p, double* w){
     return 0;
 }
 
-long read2IDTable(gzFile f, long* id1, long* id2, double* Y, long nrow, long ncol){
-    long i, j, k=0;
+int read2IDTable(gzFile f, int* id1, int* id2, double* Y, int nrow, int ncol){
+    int i, j, k=0;
     char c;
     char* cell; cell = (char*)calloc(1000, sizeof(char));
     gzseek(f, 0L, SEEK_SET);
@@ -223,9 +223,9 @@ long read2IDTable(gzFile f, long* id1, long* id2, double* Y, long nrow, long nco
 
 // Xt = W^1/2 %*% X
 // z : pseudo data
-void MstepMultinom(double* Xt, double* X, double* R, double* z, double* beta, long N3, long P, long LDX){
-    long i, j;
-    long nsp, st;
+void MstepMultinom(double* Xt, double* X, double* R, double* z, double* beta, int N3, int P, int LDX){
+    int i, j;
+    int nsp, st;
     
     for(i=0; i<P; i++){
         for(j=0; j<P; j++){
@@ -243,7 +243,7 @@ void MstepMultinom(double* Xt, double* X, double* R, double* z, double* beta, lo
 
 
 
-double EstepMultinomSub(long a, long b, double* y, double* bf, double* X, double* beta, double* pphi, long N, long P, long LDX, long H, double* Xt, double* p, double* w, double* eta, double* z){
+double EstepMultinomSub(int a, int b, double* y, double* bf, double* X, double* beta, double* pphi, int N, int P, int LDX, int H, double* Xt, double* p, double* w, double* eta, double* z){
     int i, j, k;
     double lkhd=0.0;
     double wsq;
@@ -268,7 +268,9 @@ double EstepMultinomSub(long a, long b, double* y, double* bf, double* X, double
         y[i*H+2] = (bf[i+8*N] + bf[i+9*N]) * p[i*H+2];
         tot += y[i*H+0] + y[i*H+1] + y[i*H+2];
         lkhd += log(tot);
-        if(isnan(lkhd)>0){fprintf(stderr, "NaN produced at line %d\n", i+1); return 0.0;}
+if(log(tot)<(-1e20)) fprintf(stderr, "%lf %lf\n", lkhd, log(tot));
+	if(lkhd<(-1e20)){fprintf(stderr, "Inf produced at line %d (%lf %lf %lf) \n", i+1,  y[i*H+0], y[i*H+1], y[i*H+2]); return 0.0;}
+        if(isnan(lkhd)>0){fprintf(stderr, "NaN produced at line %d (%lf %lf %lf) \n", i+1,  y[i*H+0], y[i*H+1], y[i*H+2]); return 0.0;}
         y[i*H+0] /= tot;
         y[i*H+1] /= tot;
         y[i*H+2] /= tot;
@@ -302,6 +304,7 @@ double EstepMultinomSub(long a, long b, double* y, double* bf, double* X, double
         RX(w+i*H*H, X+i*H, H, P, LDX, Xt+i*H);
     }
     free(ymp);
+fprintf(stderr, "lkhdtmpe=%lf %d\n", lkhd, isinf(lkhd));
     return lkhd;
 }
 
@@ -312,9 +315,9 @@ void* EstepMultinom(void* args){
 }
 
 
-double vcovMultinom(double* X, double* Xt, double* R, double* y, double* p, long LDX, long N, long P, long H, double* res){
+double vcovMultinom(double* X, double* Xt, double* R, double* y, double* p, int LDX, int N, int P, int H, double* res){
     double* V; V = (double*)calloc(P*2, sizeof(double));
-    long i, j, k;
+    int i, j, k;
     for(i=0; i<N; i++){
         for(j=0; j<P; j++){
             Xt[i+j*N] = 0.0;
@@ -350,8 +353,8 @@ double vcovMultinom(double* X, double* Xt, double* R, double* y, double* p, long
 // P = # covariates
 // X : N*3 x P
 // Z : N x 10
-void emATACMultinom(double* bf, double* X, long N, long P, long LDX, double* Z, double* z1, double* beta, long nthreads){
-    long itr, i, j, k;
+void emATACMultinom(double* bf, double* X, int N, int P, int LDX, double* Z, double* z1, double* beta, int nthreads){
+    int itr, i, j, k;
     
     //double* beta; beta = (double*)calloc(P*2, sizeof(double));
     double* eta;  eta  = (double*)calloc(N*3, sizeof(double));
@@ -361,13 +364,13 @@ void emATACMultinom(double* bf, double* X, long N, long P, long LDX, double* Z, 
     double* p;    p    = (double*)calloc(N*3, sizeof(double));// pi
     double* y;    y    = (double*)calloc(N*3, sizeof(double));// pi
     double* R;    R    = (double*)calloc(P*P, sizeof(double));
-    
+   
     //double phi = 0.015649;
     double tot;
     double lkhd, lkhd0;
     lkhd0 = -1e10;
-    long tid;
-    long npp = N/nthreads + 1;
+    int tid;
+    int npp = N/nthreads + 1;
     if(verbose>0 && nthreads>1){fprintf(stderr, "Data split into %ld threads with %ld peak pairs each\n", nthreads, npp);}
     HIERARCHICAL2_MT* pmt; pmt=(HIERARCHICAL2_MT*)calloc(nthreads, sizeof(HIERARCHICAL2_MT));
     pthread_t* pid;       pid=(pthread_t*)calloc(nthreads, sizeof(pthread_t));
@@ -396,14 +399,14 @@ void emATACMultinom(double* bf, double* X, long N, long P, long LDX, double* Z, 
             pmt[tid].lkhd = 0.0;
             //Estep(pmt);
             
-            long pthflag;
+            int pthflag;
             if( (pthflag = pthread_create(pid+tid, NULL, (void*)EstepMultinom, (void*)(pmt+tid))) != 0){
                 fprintf(stderr, "Thread not created...aborted.\n");
                 return;
             }
         }
         for(tid=0; tid<nthreads; tid++){
-            long pthflag;
+            int pthflag;
             if( (pthflag = pthread_join(pid[tid], NULL)) !=0 ){fprintf(stderr, "Thread not joined...aborted.\n"); return ;};
         }
         lkhd = 0.0;
@@ -413,8 +416,8 @@ void emATACMultinom(double* bf, double* X, long N, long P, long LDX, double* Z, 
         
         
         
-        if(isnan(lkhd)>0){fprintf(stderr, "NaN produced.\n"); return ;}
-        if(fabs((lkhd-lkhd0))<1e-3){fprintf(stderr, "Iteration finished.\n"); break;}else{lkhd0=lkhd; if(verbose>0){ fprintf(stderr, "[%ld] lkhd=%lf ", itr, lkhd); printV2(beta, P); fprintf(stderr, "\n"); } }
+        if(isnan(lkhd)>0 || isinf(lkhd)>0){fprintf(stderr, "NaN produced.\n"); return ;}
+        if(fabs((lkhd-lkhd0)/lkhd0)<1e-8){fprintf(stderr, "Iteration finished.\n"); break;}else{lkhd0=lkhd; if(verbose>0){ fprintf(stderr, "[%ld] lkhd=%lf ", itr, lkhd); printV2(beta, P); fprintf(stderr, "\n"); } }
         
         MstepMultinom(Xt, X, R, z, beta, N*3, P, LDX);
         //fprintf(stderr, "phi = %lf\n beta=", phi);
@@ -458,13 +461,13 @@ void emATACMultinom(double* bf, double* X, long N, long P, long LDX, double* Z, 
 }
 
 
-long parseCol(char* s, char** type, long** nexp){
-    long i, n=1, m, mtot;
+int parseCol(char* s, char** type, int** nexp){
+    int i, n=1, m, mtot;
     for(i=0; i<strlen(s); i++){
         if(s[i]==','){n++;}
     }
     type[0] = (char*)calloc(n, sizeof(char));
-    nexp[0] = (long*)calloc(n, sizeof(long));
+    nexp[0] = (int*)calloc(n, sizeof(int));
     mtot = m = 0;
     for(i=0; i<n; i++){
         if(s[mtot+1]==','){
@@ -477,8 +480,8 @@ long parseCol(char* s, char** type, long** nexp){
     return n;
 }
 
-long countP(char** type, long** nexp, long n){
-    long i, P=0;
+int countP(char** type, int** nexp, int n){
+    int i, P=0;
     for(i=0; i<n; i++){
         if(type[0][i]=='N'){// numeric
             P += 1 + nexp[0][i];
@@ -489,8 +492,8 @@ long countP(char** type, long** nexp, long n){
     return P;
 }
 
-int emColoc(double* bf, double* Z, long nrow, double* z1){
-    long i, j, itr;
+int emColoc(double* bf, double* Z, int nrow, double* z1){
+    int i, j, itr;
     double psi=0.1, del=0.08, lkhd=0.0, lkhd0=-1.0e20;
     double* d; d=(double*)calloc(nrow, sizeof(double));
     double* p; p=(double*)calloc(6, sizeof(double));
@@ -531,29 +534,29 @@ int emColoc(double* bf, double* Z, long nrow, double* z1){
 
 
 int main(int argc, char** argv){
-    long i, j, k, l;
+    int i, j, k, l;
     
     if(argc==1){usage_phm(); return 1;} 
     verbose = 0; for(i=0; i<argc; i++){if(strcmp(argv[i], "-v")==0 || strcmp(argv[i], "--verbose")==0){ verbose=1; }}
     
-    long nthreads = 1;
-    for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--n-threads")==0 || strcmp(argv[k],"-t")==0){nthreads = (long)atoi(argv[k+1]);}}
+    int nthreads = 1;
+    for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--n-threads")==0 || strcmp(argv[k],"-t")==0){nthreads = (int)atoi(argv[k+1]);}}
     
     gzFile fi = NULL; // i = variant level
     gzFile fj = NULL; // j = feature level
     char* typi = NULL;
-    long* nxpi = NULL;
-    long* nxpj = NULL;
-    long* cumcoli;
-    long* id1;
-    long* id2;
-    long nvari;
-    long nfeatures=0;
-    long pi, Pi;// numbers of col and expanded col (p & P)
-    long nrow=2;
-    long ldx;
+    int* nxpi = NULL;
+    int* nxpj = NULL;
+    int* cumcoli;
+    int* id1;
+    int* id2;
+    int nvari;
+    int nfeatures=0;
+    int pi, Pi;// numbers of col and expanded col (p & P)
+    int nrow=2;
+    int ldx;
     
-    long NB;
+    int NB;
     
     double** Xki;
     double** Bsi;
@@ -561,8 +564,8 @@ int main(int argc, char** argv){
     double* X;
     double* bf;
     
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-f")==0 || strcmp(argv[i], "--n-features")==0){ nfeatures = (long)atoi(argv[i+1]); }}
-    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-r")==0 || strcmp(argv[i], "--n-rows")==0){ nrow = (long)atoi(argv[i+1]); }}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-f")==0 || strcmp(argv[i], "--n-features")==0){ nfeatures = (int)atoi(argv[i+1]); }}
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-r")==0 || strcmp(argv[i], "--n-rows")==0){ nrow = (int)atoi(argv[i+1]); }}
     
     
     // input
@@ -575,7 +578,7 @@ int main(int argc, char** argv){
                     Pi = countP(&typi, &nxpi, pi)+1;
                     Xki = (double**)calloc(pi, sizeof(double*));
                     Bsi = (double**)calloc(pi, sizeof(double*));
-                    cumcoli = (long*)calloc(Pi+1, sizeof(long));cumcoli[0]=1;
+                    cumcoli = (int*)calloc(Pi+1, sizeof(int));cumcoli[0]=1;
                     l=0;
                     for(k=0; k<pi; k++){
                         if(verbose>0)fprintf(stderr, "%ld %c %ld\n", Pi, typi[k], nxpi[k]);
@@ -600,8 +603,8 @@ int main(int argc, char** argv){
                 ldx = nrow*3+Pi*2;
                 X = (double*)calloc(ldx*(2*Pi+1), sizeof(double));
                 bf= (double*)calloc(nrow*NB,      sizeof(double));
-                id1 = (long*)calloc(nrow, sizeof(double));
-                id2 = (long*)calloc(nrow, sizeof(double));
+                id1 = (int*)calloc(nrow, sizeof(double));
+                id2 = (int*)calloc(nrow, sizeof(double));
             
                 for(j=0; j<nrow; j++){
                     X[0 *ldx + j*3+0] = 1.0;
@@ -621,8 +624,8 @@ int main(int argc, char** argv){
                 ldx = nrow+Pi;
                 //X = (double*)calloc(ldx*(Pi+1), sizeof(double));
                 bf= (double*)calloc(nrow*NB,    sizeof(double));
-                id1 = (long*)calloc(nrow, sizeof(double));
-                id2 = (long*)calloc(nrow, sizeof(double));
+                id1 = (int*)calloc(nrow, sizeof(double));
+                id2 = (int*)calloc(nrow, sizeof(double));
                 for(j=0; j<nrow; j++){
                     //X[0*ldx + j] = 1.0;
                 }
@@ -640,8 +643,8 @@ int main(int argc, char** argv){
     double* beta;
     if(NB==10){
         beta = (double*)calloc((Pi*2+1)*(Pi*2+1+1), sizeof(double));
-        beta[0] =-4.007432;//-4.348672;
-        beta[Pi]=-5.030170;//-4.166187;
+        beta[0] =-2.007432;//-4.348672;
+        beta[Pi]=-2.030170;//-4.166187;
         beta[Pi*2]=1.0;
         for(k=0; k<argc-1; k++){if(strcmp(argv[k],"--init-beta")==0){
             FILE* fbeta = fopen(argv[k+1],"rb");
@@ -744,7 +747,7 @@ int main(int argc, char** argv){
     double* q;     q = (double*)calloc(nfeatures*2, sizeof(double)); // having 0 upstream   peak
     double* tss; tss = (double*)calloc(nfeatures, sizeof(double)); // tss flag
     double* we;  we  = (double*)calloc(nfeatures, sizeof(double)); // we flag
-    long*   parent;    parent    =   (long*)calloc(nfeatures, sizeof(long));   // parent id
+    int*   parent;    parent    =   (int*)calloc(nfeatures, sizeof(int));   // parent id
     double* maxparent; maxparent = (double*)calloc(nfeatures, sizeof(double)); // maximum posterior prob for the "parent"
     
     //FILE* ftfbs; ftfbs = fopen("Data/segway.tss.pf.e.we.bin", "rb");

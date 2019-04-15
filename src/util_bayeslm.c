@@ -12,8 +12,8 @@ double expit(double x){
 double rk1(double x, double z){
     return ((z-0.5)*(z-0.5)-1./12.)*((x-0.5)*(x-0.5)-1./12.)/4. - (pow(fabs(x-z)-0.5, 4.)-(fabs(x-z)-0.5)*(fabs(x-z)-0.5)/2. + 7./240.)/24.;
 }
-void rk(double* x0, double* x, double* xk, long n, long nk){
-    long i, j;
+void rk(double* x0, double* x, double* xk, int n, int nk){
+    int i, j;
     for(i=0; i<n; i++){
         if(x0[i]>=0.0){
             x[i] = x0[i];

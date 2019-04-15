@@ -16,7 +16,7 @@ void clearAs(double* x, int n, double val){
 
 
 
-double nk_var(double* x, double* y, long N){
+double nk_var(double* x, double* y, int N){
     double mx, my;
     int i;
     mx=my=0.0;
@@ -576,7 +576,7 @@ int parseCigarPoint(int start, char* c1, char* seq, int* at, int K, char*** als,
 		flagin=0;
         if(op[0]=='M' || op[0]=='=' || op[0]=='X'){
             end = start+len-1;
-			long nseq0=nseq;
+			int nseq0=nseq;
 			for(k=0; k<K; k++){
 				nseq=nseq0;
                 if(start <= at[k] && at[k] <= end){
@@ -1684,8 +1684,8 @@ int lm(int argc, char** argv){
                         double apeakdis = ((double)abs(pcents[fid_bed]-pcents[fid2_bed+j]))/500000.0;
                         
                         if(outf==NULL){
-                            printf("%d\t%d\t%lf", fid, fid2+j, apeakdis);
-                            for(k=0; k<9; k++){printf("\t% ", log(pp13[k]));} printf("%lf\n", log(pp13[k])); 
+                            printf("%d\t%d\t%lf\t", fid, fid2+j, apeakdis);
+                            for(k=0; k<9; k++){printf("%lf ", log(pp13[k]));} printf("%lf\n", log(pp13[k])); 
                         }else{
                             gzprintf(outf, "%d\t%d\t%lf\t", fid, fid2+j, apeakdis);
                             for(k=0; k<9; k++){gzprintf(outf, "%lf ", log(pp13[k]));} gzprintf(outf, "%lf\n", log(pp13[k])); 
