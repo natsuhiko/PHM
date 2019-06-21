@@ -522,7 +522,7 @@ long main(long argc, char** argv){
     long* nxpj = NULL;
     long* cumcoli=NULL;
     long* cumcolj;
-    long* cumloci;
+    long* cumloci=NULL;
     long nvari, nvarj;
     long nfeatures=0;
     long pi, pj, Pi, Pj;// numbers of col and expanded col (p & P)
@@ -578,6 +578,7 @@ long main(long argc, char** argv){
             bf= (double*)calloc(nrow,        sizeof(double));
             cumloci = (long*)calloc(nfeatures+1, sizeof(double));
             if(X==NULL || bf==NULL || cumloci==NULL){fprintf(stderr, "Memory allocation failed...aborted.\n"); return 1;}
+            if(verbose>0){fprintf(stderr, "cumloci[%ld]=%ld", nfeatures, cumloci[nfeatures]);}
             readTable(fi, X, bf, typi, nxpi, Xki, Bsi, nrow, pi, cumloci, cumcoli, Pi, 1.);
             long ii; for(ii=0; ii<nrow; ii++){bf[ii] *= exp(lbfoffs);} // bf offset
             if(verbose>0){ 
