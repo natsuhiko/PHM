@@ -70,6 +70,7 @@ long readTable(gzFile f, double* X, double* bf, char* type, long* nexp, double**
                         l++;
                     }else if(type[j]=='I'){
                         sscanf(cell, "%ld", &lcell);
+if(verbose>0)fprintf(stderr, "%s %ld ", cell, lcell);
                         cumloci[lcell]=i+1;
                     }
                     k = 0;
