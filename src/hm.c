@@ -22,7 +22,7 @@ int cmpdr (const void * a, const void * b){
 }
 
 // P = expanded ncol
-long readTable(gzFile f, double* X, double* bf, char* type, long* nexp, double** Xk, double** Bs, long nrow, long ncol, long* cumloci, long* cumcol, long P, double sigma){
+long readTable(gzFile f, double* X, double* bf, char* type, long* nexp, double** Xk, double** Bs, long nrow, long ncol, long* cumloci, long* cumcol, long P, double sigma, long nfeatures){
     // j all col in f
     // l only N & C
     // cumcol only N & C
@@ -70,7 +70,7 @@ long readTable(gzFile f, double* X, double* bf, char* type, long* nexp, double**
                         l++;
                     }else if(type[j]=='I'){
                         sscanf(cell, "%ld", &lcell);
-if(verbose>0)fprintf(stderr, "%s %ld ", cell, lcell);
+			if(lcell>nfeatures){fprintf(stderr, "The value of ID column (cell=%s, l=%ld) exceeds the number of features (=%ld). Aborted.\n", cell, lcell, nfeatures); return 1;}
                         cumloci[lcell]=i+1;
                     }
                     k = 0;
@@ -579,8 +579,8 @@ long main(long argc, char** argv){
             bf= (double*)calloc(nrow,        sizeof(double));
             cumloci = (long*)calloc(nfeatures+1, sizeof(double));
             if(X==NULL || bf==NULL || cumloci==NULL){fprintf(stderr, "Memory allocation failed...aborted.\n"); return 1;}
-            if(verbose>0){fprintf(stderr, "cumloci[%ld]=%ld", nfeatures, cumloci[nfeatures]);}
-            readTable(fi, X, bf, typi, nxpi, Xki, Bsi, nrow, pi, cumloci, cumcoli, Pi, 1.);
+            //if(verbose>0){fprintf(stderr, "cumloci[%ld]=%ld", nfeatures, cumloci[nfeatures]);}
+            if(readTable(fi, X, bf, typi, nxpi, Xki, Bsi, nrow, pi, cumloci, cumcoli, Pi, 1., nfeatures)>0){return 1;};
             long ii; for(ii=0; ii<nrow; ii++){bf[ii] *= exp(lbfoffs);} // bf offset
             if(verbose>0){ 
                 //fprintf(stderr, "cumloci: "); printVL(cumloci, nfeatures+1);
@@ -626,7 +626,7 @@ long main(long argc, char** argv){
             if(typj==NULL){fprintf(stderr, "No column information for %s\n", argv[i+1]); return 1;}
             
             U = (double*)calloc((nfeatures+Pj)*(Pj+1), sizeof(double)); for(j=0; j<nfeatures; j++){U[j]=1.0;}
-            readTable(fj, U, NULL, typj, nxpj, Xkj, Bsj, nfeatures, pj, NULL, cumcolj, Pj, 10.0);
+            readTable(fj, U, NULL, typj, nxpj, Xkj, Bsj, nfeatures, pj, NULL, cumcolj, Pj, 10.0, nfeatures);
             if(verbose>0){
                 //printM(U, nfeatures+Pj, Pj+1);
                 printM2(U+nfeatures, Pj, Pj+nfeatures, Pj);
