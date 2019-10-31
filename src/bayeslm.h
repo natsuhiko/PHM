@@ -1,4 +1,4 @@
-#include <config.h>
+//#include <config.h>
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,6 +19,8 @@
 #include <zlib.h>
 #include <math.h>
 #include "getLogBF.h"
+#include "util.h"
+#include "util_bayeslm.h"
 
 int exp_gt_gtdsgl;
 int verbose_loadVCF;

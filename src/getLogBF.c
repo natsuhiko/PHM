@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <math.h> 
 #include <gsl/gsl_cdf.h>
-
+#include "util.h"
+#include "util_bayeslm.h"
 
 double getLogBF(double* g, double* y, int n, double sigma, double* work);
 
@@ -92,6 +93,27 @@ double getLogWABFfromBetaSE(double beta, double se){
         bf += exp( 0.5*log(1.-r) + 0.5*z*z*r ) / 3.0;
     }
     return log(bf);
+}
+
+// work : length (6+P)N + (3P+2)P + 1
+double getLogWABFInter(double* g, double* y, double* env, long N, double* work){
+    int nthvar=4;
+    int totvar=4;
+    double* X; X = work;
+    double* params; params = work + N*4;
+    long i, j;
+    for(i=0; i<N; i++){
+        X[i+0*N] = 1.0;
+        X[i+1*N] = g[i];
+        X[i+2*N] = env[i];
+        X[i+3*N] = g[i]*env[i];
+    }
+    lm(y, X, N, totvar, params);
+    double s2  = 10.;
+    double r   = s2 / (s2 + params[nthvar-1+totvar]*params[nthvar-1+totvar]);
+    double z   = ptqn(params[nthvar-1]/params[nthvar-1+totvar], (double)N);
+    double lbf = 0.5*log(1.-r) + 0.5*z*z*r;
+    return lbf;
 }
 
 double getLogWABFMR(double* g, double* x, double* y, int n){

@@ -1,14 +1,60 @@
 #include "util_bayeslm.h"
+#include "util.h"
 
-int mini(int a, int b){return a<b ? a : b;}
-int maxi(int a, int b){return a>b ? a : b;}
 
-double logit(double x){
-    return log(x/(1.-x));
+
+
+// params : length of (2+P)N + (3P+2)P + 1
+double lm(double* y, double* X, long N, long P, double* params){
+    /*double* yhat;  yhat = (double*)calloc(N, sizeof(double));
+    double* resid; resid = (double*)calloc(N, sizeof(double));
+    double* Q;     Q = (double*)calloc(N*P, sizeof(double));
+    double* R;     R = (double*)calloc(P*P, sizeof(double));
+    double* H;     H = (double*)calloc(2*P*P, sizeof(double));*/
+    double* beta;  beta = params;
+    double* se;    se   = params+P;
+    double* yhat;  yhat = params+2*P+1;
+    double* resid; resid= params+2*P+1+N;
+    double* Q;     Q    = params+2*P+1+N*2;
+    double* R;     R    = params+2*P+1+N*2+N*P;
+    double* H;     H    = params+2*P+1+N*2+N*P+P*P;
+    double s2 = 0.0;
+    long i;
+
+    // Q R <- X
+    nk_dcopy(X,Q,N*P);
+    qr(Q, R, N, P, N);
+
+    // beta <- R^-1 Q^T y
+    nk_dgemvT(Q, N, P, N, y, H);
+    BackSolve(R, P, H, beta);
+
+    // yhat <- X %*% b, resid <- y - yhat, s2 = | resid |^2 / (N-P)
+    nk_dgemv(X, N, P, N, beta, yhat);
+    for(i=0; i<N; i++){ resid[i] = y[i] - yhat[i]; s2 += resid[i]*resid[i];}
+    s2 /= (double)(N-P);
+
+    // H <- R^-1 R^-T
+    clearAs0(H, P*P*2);
+    for(i=0; i<P; i++){
+        H[P*i+i]=1.0;
+        ForwardSolve(R, P, H+P*i, H+P*(P+i));
+    }
+    for(i=0; i<P; i++){
+        BackSolve(R, P, H+P*(P+i), H+P*i);
+        se[i] = sqrt(H[P*i+i]*s2);
+    }
+    params[P*2] = s2;
+    /*free(Q);
+    free(R);
+    free(yhat);
+    free(resid);
+    free(H);*/
+    return 0;
 }
-double expit(double x){
-    return 1./(1.+exp(-x));
-}
+
+
+/*
 double rk1(double x, double z){
     return ((z-0.5)*(z-0.5)-1./12.)*((x-0.5)*(x-0.5)-1./12.)/4. - (pow(fabs(x-z)-0.5, 4.)-(fabs(x-z)-0.5)*(fabs(x-z)-0.5)/2. + 7./240.)/24.;
 }
@@ -23,6 +69,7 @@ void rk(double* x0, double* x, double* xk, int n, int nk){
         }
     }
 }
+*/
 
 typedef struct{
     double val;
@@ -100,7 +147,7 @@ void randomise2(double* y, double* y2, int m, int n){
 }
 
 
-
+/*
 void expand(int* pos, double* val, int n, int* pos2, double* val2, int n2, double* w){// n < n2
     int i=0, j=0;
     while(i<n){
@@ -169,10 +216,6 @@ void wsoftmax(double* eta, double* y, double* w, int n){
     }else{y[i] = 0.0;}}
 }
 
-void clearAs0(double* x, int n){
-    int i;
-    for(i=0; i<n; i++){x[i]=0.0;}
-}
 
 double nk_mean(double* x, int n){
     double res = 0.0;
@@ -182,7 +225,7 @@ double nk_mean(double* x, int n){
     }
     return res / (double)n;
 }
-
+*/
 double nk_sum(double* x, int n){
     double res = 0.0;
     int i;
@@ -191,6 +234,7 @@ double nk_sum(double* x, int n){
     }
     return res;
 }
+
 
 double bdfsum(char* fname, int n, int skip){
     //fprintf(stderr, "%d %d\n", n, skip);
@@ -208,13 +252,14 @@ double bdfsum(char* fname, int n, int skip){
     return res;
 }
 
-
+/*
 void sumTo1(double* x, int n){
     double tot=0.0;
     int i;
     for(i=0; i<n; i++){tot += x[i];}
     for(i=0; i<n; i++){x[i] /= tot;}
 }
+*/
 
 int bdfscanf1h(char* filename, double** x, int n0, int nskip){
     FILE* f; f = fopen(filename, "rb");

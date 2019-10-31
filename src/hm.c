@@ -100,7 +100,7 @@ long readTable(gzFile f, double* X, double* bf, char* type, long* nexp, double**
     return 0;
 }
 
-
+/*
 void dgemv(double* A, long N, long M, long lda, double* x, double* y){
     long i, j;
     for(i=0; i<N; i++){
@@ -122,7 +122,7 @@ void dgemvT(double* A, long N, long M, long lda, double* x, double* y){
         }
     }
 }
-
+*/
 
 void* Estep(void *args){
     HIERARCHICAL_MT* pmt = (HIERARCHICAL_MT *)args;
@@ -168,10 +168,10 @@ void* Estep(void *args){
         fprintf(stderr, "blas\n");
         cblas_dgemv(CblasColMajor, CblasNoTrans, cumloci[j+1]-cumloci[j], P+1, 1.0, X0+cumloci[j], ldx, beta, 1, 0.0, eta+cumloci[j], 1);
 #else
-        dgemv(X0+cumloci[j], cumloci[j+1]-cumloci[j], P+1, ldx, beta, eta+cumloci[j]);
+        nk_dgemv(X0+cumloci[j], cumloci[j+1]-cumloci[j], P+1, ldx, beta, eta+cumloci[j]);
 #endif
         // pjk <- softmax(eta)
-        if(softmax(eta+cumloci[j], pjk+cumloci[j], cumloci[j+1]-cumloci[j])>0){fprintf(stderr, "softmax total is zero at j=%d\n", j+1);}
+        if(softmax(eta+cumloci[j], pjk+cumloci[j], cumloci[j+1]-cumloci[j])>0){fprintf(stderr, "softmax total is zero at j=%ld\n", j+1);}
         //for(k=cumloci[j]; k<cumloci[j]+10; k++){fprintf(stderr, "%lf ", pjk[k]);}fprintf(stderr, "\n");
         // z   <- pjk, BF, Pi; &
         // Z1  <- z
@@ -196,7 +196,7 @@ void* Estep(void *args){
 #ifdef CBLAS
         cblas_dgemv(CblasColMajor, CblasTrans, cumloci[j+1]-cumloci[j], P, 1.0, X0+cumloci[j], ldx, pjk+cumloci[j], 1, 0.0, xb, 1);
 #else
-        dgemvT(X0+cumloci[j], cumloci[j+1]-cumloci[j], P, ldx, pjk+cumloci[j], xb);
+        nk_dgemvT(X0+cumloci[j], cumloci[j+1]-cumloci[j], P, ldx, pjk+cumloci[j], xb);
 #endif
         // Xt  <- X, xb, w; &
         // y   <- w, eta, z
@@ -246,7 +246,7 @@ void Mstep(double* Xt, double* X0, double* R, double* y, double* beta, double* b
 #ifdef CBLAS
     cblas_dgemv(CblasColMajor, CblasTrans, ldx, P, 1.0, Xt, ldx, y, 1, 0.0, beta+P+1, 1); if(verbose>0){fprintf(stderr, "Xt * y=\n"); printV2(beta+P+1, P);}
 #else
-    dgemvT(Xt, ldx, P, ldx, y, beta+P+1); 
+    nk_dgemvT(Xt, ldx, P, ldx, y, beta+P+1); 
 #endif
     // beta  <- backsolve(R, beta1)
     BackSolve(R, P, beta+P+1, beta);
@@ -353,7 +353,7 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
         //############
         //#  Esteps  #
         //############
-        dgemv(U0, nfeatures, Pj+1, nfeatures+Pj, gamma, Pis);// Pi <- U %*% gamma // not yet Pi
+        nk_dgemv(U0, nfeatures, Pj+1, nfeatures+Pj, gamma, Pis);// Pi <- U %*% gamma // not yet Pi
         for(i=0; i<nfeatures; i++){
 		Pis[i]=1./(1.+exp(-Pis[i])); 
 //remove
@@ -392,12 +392,12 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
         }
         
         lkhd = 0.0;
-        for(tid=0; tid<nthreads; tid++){lkhd += pmt[tid].lkhd; if(isnan(pmt[tid].lkhd)>0){fprintf(stderr, "Partial likelihood for thread %d is NaN.\n", tid);} }
+        for(tid=0; tid<nthreads; tid++){lkhd += pmt[tid].lkhd; if(isnan(pmt[tid].lkhd)>0){fprintf(stderr, "Partial likelihood for thread %ld is NaN.\n", tid);} }
         qval = getQval(Z1, Pis, z, pjk, BF, L, nfeatures, X0, beta, Pi, U0, gamma, Pj, &lkhd, lambda); // adding penalty to lkhd
         //lkhd = getQval(Z1, Pis, z, pjk, BF, L, nfeatures, X0, beta, Pi, U0, gamma, Pj, &pen, lambda); // adding penalty to lkhd
         if(isnan(lkhd)>0 || (lkhd1-lkhd>fabs(lkhd)/20. && again<6)){
             if(verbose>0){
-                fprintf(stderr, "[%d]  lkhd=%lf -> %lf\t", itr, lkhd1, lkhd); printV2n(beta, Pi+1); printV2(gamma, Pj+1);
+                fprintf(stderr, "[%ld]  lkhd=%lf -> %lf\t", itr, lkhd1, lkhd); printV2n(beta, Pi+1); printV2(gamma, Pj+1);
             }
             //fprintf(stderr, "  devol!\n");
             if(verbose>0){ fprintf(stderr, "  Before: "); printV2(beta, Pi);}
@@ -409,8 +409,8 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
             again++;
         }else{
             if(verbose>0){
-                if(lkhd>lkhd1){ fprintf(stderr, "[%d] *lkhd=%lf -> %lf\t", itr, lkhd1, lkhd); printV2n(beta, Pi+1); printV2(gamma, Pj+1); }
-                 else{          fprintf(stderr, "[%d]  lkhd=%lf -> %lf\t", itr, lkhd1, lkhd); printV2n(beta, Pi+1); printV2(gamma, Pj+1); }
+                if(lkhd>lkhd1){ fprintf(stderr, "[%ld] *lkhd=%lf -> %lf\t", itr, lkhd1, lkhd); printV2n(beta, Pi+1); printV2(gamma, Pj+1); }
+                 else{          fprintf(stderr, "[%ld]  lkhd=%lf -> %lf\t", itr, lkhd1, lkhd); printV2n(beta, Pi+1); printV2(gamma, Pj+1); }
             }
             //###########################
             //# Mstep for variant level #
@@ -452,7 +452,7 @@ if(beta[0]>20.){beta[0]=7.;}
             again = 0;
         }
     }
-    fprintf(stderr, "Iteration finished: itr=%d\n", itr);
+    fprintf(stderr, "Iteration finished: itr=%ld\n", itr);
     
     //##############
     //# Output
@@ -479,7 +479,8 @@ if(beta[0]>20.){beta[0]=7.;}
 }
 
 long parseCol(char* s, char** type, long** nexp){
-    long i, n=1, m, mtot;
+    long i, n=1, mtot;
+    int m;
     for(i=0; i<strlen(s); i++){
         if(s[i]==','){n++;}
     }
@@ -492,7 +493,7 @@ long parseCol(char* s, char** type, long** nexp){
         }else{
             sscanf(s+mtot, "%c%ld%n", &(type[0][i]), &(nexp[0][i]), &m);
         }
-        mtot += m + 1;
+        mtot += (long)m + 1;
     }
     return n;
 }
@@ -509,7 +510,7 @@ long countP(char** type, long** nexp, long n){
     return P;
 }
 
-long main(long argc, char** argv){
+int main(int argc, char** argv){
     long i, j, k, l;
    
     if(argc==1){usage_hm(); return 1;} 
@@ -574,7 +575,7 @@ long main(long argc, char** argv){
             }
             nvari = l;
             if(typi==NULL){fprintf(stderr, "No column information for %s\n", argv[i+1]); return 1;}
-            if(verbose>0) fprintf(stderr, "Loading table (nrows=%d nfeatures=%d) started...", nrow, nfeatures);
+            if(verbose>0) fprintf(stderr, "Loading table (nrows=%ld nfeatures=%ld) started...", nrow, nfeatures);
             X = (double*)calloc(((long)nrow+(long)Pi)*((long)Pi+1), sizeof(double));
             bf= (double*)calloc(nrow,        sizeof(double));
             cumloci = (long*)calloc(nfeatures+1, sizeof(double));
@@ -655,7 +656,7 @@ long main(long argc, char** argv){
     for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--init-variant-level")==0){
         FILE* fbeta0;
         fbeta0 = fopen(argv[i+1], "rb");
-        fread(beta0, sizeof(double), Pi, fbeta0);
+        int freadout = fread(beta0, sizeof(double), Pi, fbeta0);
         fclose(fbeta0);
         fprintf(stderr, "Init Beta: "); printV2(beta0, Pi);
     }}
@@ -674,7 +675,7 @@ long main(long argc, char** argv){
     for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--init-feature-level")==0){
         FILE* fgamma0;
         fgamma0 = fopen(argv[i+1], "rb");
-        fread(gamma0, sizeof(double), Pj, fgamma0);
+        int freadout = fread(gamma0, sizeof(double), Pj, fgamma0);
         fclose(fgamma0);
         fprintf(stderr, "Init Gamma: "); printV2(gamma0, Pj);
     }}
@@ -766,7 +767,7 @@ long main(long argc, char** argv){
                 if(plocij<postth[2]){nlocij[2]++;}
                 plocij += z[k]/Z1[j];
             }
-            gzprintf(nplocif, "%ld\t%d\t%d\t%d\n", j+1, nlocij[0], nlocij[1], nlocij[2]);
+            gzprintf(nplocif, "%ld\t%ld\t%ld\t%ld\n", j+1, nlocij[0], nlocij[1], nlocij[2]);
         }
         gzclose(nplocif);
     }}

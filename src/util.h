@@ -14,6 +14,11 @@ double* BT;
 
 long verbose;
 
+void nk_dgemv(double* A, long N, long M, long lda, double* x, double* y);
+void nk_dgemvT(double* A, long N, long M, long lda, double* x, double* y);
+long nk_dcopy(double* x, double* y, long n);
+
+
 long endWith(char* x, char* y);
 void printV(double* x, long n);
 void printVL(long* x, long n);
@@ -24,6 +29,7 @@ void printV2L(double* x, long n, long ldx);
 void printV2n(double* x, long n);
 void rk(double* x0, double* x, double* xk, long n, long nk);
 void expand(long* pos, double* val, long n, long* pos2, double* val2, long n2, double* w);
+void expandInt(int* pos, double* val, int n, int* pos2, double* val2, int n2, double* w);
 long softmax(double* eta, double* y, long n);
 void multisoftmax(double* eta, double* p, long N, long H);
 void wsoftmax(double* eta, double* y, double* w, long n);

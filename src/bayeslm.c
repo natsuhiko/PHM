@@ -167,13 +167,15 @@ int isSnp(int* allen, int nal){
 }
 
 
-
+/*
 double nk_dsum(double* x, int n, int ldx){
     int i;
     double res=0.0;
     for(i=0; i<n; i++){res += x[i*ldx];}
     return res;
 }
+*/
+
 
 int nk_isum(int* x, int n, int ldx){
     int i;
@@ -1165,7 +1167,7 @@ int getNpeaks(int* pcents, int n, int a, int b){
 // 0 .. npeaks in [-2W, 2W] for prior prob
 // 0 .. M in [-W, W] for testing
 
-int lm(int argc, char** argv){
+int bayeslm(int argc, char** argv){
     
     int i, j, mode=MODE_N;
     
@@ -1219,7 +1221,7 @@ int lm(int argc, char** argv){
         Psi=(double*)calloc(4, sizeof(double));
         if(verbose>0){fprintf(stderr, "Psi1 : %s\n", argv[i+1]);};
         bdfscanf1h(argv[i+1], &beta_psi, 12, 0);
-        if(verbose>0){printV(beta_psi, 12);}
+        if(verbose>0){fprintf(stderr, "psi=");printV(beta_psi, 12);}
         break;}
     }
     
@@ -1252,8 +1254,6 @@ int lm(int argc, char** argv){
     
     // 
     if(tss<1){tss=1;}
-    
-    
     
     
     // region in which variants are used
@@ -1386,6 +1386,7 @@ int lm(int argc, char** argv){
     if(verbose>0){fprintf(stderr, "Genotype dose has been successfully loaded from %s in %s (%d x %d).\n", fname, reg, nbivars, samplesize);}
     
     double maf0 = 0.05;
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--minor-allele-frequency")==0){maf0 = (double)atof(argv[i+1]); break;}}
     
     double* af;     af     = (double*)calloc(nbivars, sizeof(double));
     double* rsq;    rsq    = (double*)calloc(nbivars, sizeof(double));
@@ -1472,7 +1473,19 @@ int lm(int argc, char** argv){
         }
         break;
     }}
-    
+   
+    // GxE
+    double* workForBFCalc; workForBFCalc = (double*)calloc(10*samplesize + (3*4+2)*4 + 1, sizeof(double));
+    double* env = NULL;
+    for(i=0; i<argc-1; i++){if(strcmp(argv[i], "--env")==0){
+        //fprintf(stderr, "Interaction: %s\n", argv[i+1]);
+        FILE* fenv; fenv = fopen(argv[i+1], "rb");
+        env = (double*)calloc(samplesize, sizeof(double));
+        fread_info = fread(env, sizeof(double), samplesize, fenv);
+        fclose(fenv);
+        break;
+    }}
+ 
     // computation of BFs
     double* be;     be     = (double*)calloc(nbivars * (M+1), sizeof(double));
     double* se;     se     = (double*)calloc(nbivars * (M+1), sizeof(double));
@@ -1525,8 +1538,12 @@ int lm(int argc, char** argv){
             //fprintf(stderr, "%s\t%lf\n", rss[j],ds[j*samplesize]);
             w[j] = 1.0;
             //bf[j] = getLogBF(ds+j*samplesize, y, samplesize, sqrt(10.0), work);
-            bf[j] = getLogWABF(ds+j*samplesize, y, samplesize);
-            be[j] = getBeta(ds+j*samplesize, y, samplesize, se+j);
+            if(env==NULL){
+                bf[j] = getLogWABF(ds+j*samplesize, y, samplesize);
+                be[j] = getBeta(ds+j*samplesize, y, samplesize, se+j);
+            }else{
+                bf[j] = getLogWABFInter(ds+j*samplesize, y, env, samplesize, workForBFCalc);
+            }
             if(mode==MODE_P || mode==MODE_C || mode==MODE_PP){// for pairwise
                 af2[j]  = nk_dsum(ds2+j*samplesize2,       samplesize2, 1)/2.0/(double)samplesize2;
                 rsq2[j] = nk_var( ds2+j*samplesize2, ds2+j*samplesize2, samplesize2)/af2[j]/(1.0-af2[j])/2.0;
@@ -1600,7 +1617,7 @@ int lm(int argc, char** argv){
                 
                 //printV(bf2orig, nrowbf2);
                 clearAs0(w, nbivars);
-                expand(pos2bf2, bf2orig, nrowbf2, pos, bf2, nbivars, w);
+                expandInt(pos2bf2, bf2orig, nrowbf2, pos, bf2, nbivars, w);
                 //fprintf(stderr, "N ol vars=%lf\n", nk_dsum(w,nbivars,1)); 
                 
                 //double* pp3;  pp3  = (double*)calloc(3,  sizeof(double));
@@ -1647,6 +1664,7 @@ int lm(int argc, char** argv){
             if(mode==MODE_P || mode==MODE_PP){ // same trait
                 if(fid!=fid2+j){
                     if(mode==MODE_PP){// posterior calculation after fitting
+                        if(verbose>0){fprintf(stderr, "Posterior prob calculation and lead variant detection\n");}
                         
                         double xk[4] = {0.1470588, 0.3823529, 0.6176471, 0.8529412};// for spline
                         
@@ -1677,7 +1695,7 @@ int lm(int argc, char** argv){
                         nloci = nbivars;
                         pwhmfm( bf+geta, bf+(j+1)*nbivars+geta, bfmr+(j+1)*nbivars+geta, bfmr2+(j+1)*nbivars+geta, eta0+geta, eta+geta, eta+(j+1)*nbivars+geta, Pi1[0], Pi1[j+1], w+geta, nloci, Psi, Zj+geta);
                     }else if(mode==MODE_P){
-                        if(verbose>0){fprintf(stderr, "%lf %lf %lf\n", Pi1[0], Pi1[j+1], Pi1_a[j+1]);}
+                        if(verbose>0){fprintf(stderr, "Pi1=%lf Pi1_pair=%lf Pi1_a=%lf\n", Pi1[0], Pi1[j+1], Pi1_a[j+1]);}
 
                         
                         pwhmnew(bf+geta, bf+(j+1)*nbivars+geta, bfmr+(j+1)*nbivars+geta, bfmr2+(j+1)*nbivars+geta, eta0+geta, eta+geta, eta+(j+1)*nbivars+geta, Pi1[0], Pi1[j+1], Pi1_a[j+1], w+geta, nloci, pp13, loccatid+geta);
@@ -1768,6 +1786,6 @@ int main(int argc, char** argv){
     if(argc==1){usage_bayeslm(); return 1;}
     exp_gt_gtdsgl = 0;
     if(verbose_loadVCF>0)fprintf(stderr, "\n\nbayesLm\n\n");
-    lm(argc, argv);
+    bayeslm(argc, argv);
 
 }

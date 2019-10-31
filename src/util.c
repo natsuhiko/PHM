@@ -1,5 +1,27 @@
 #include "util.h"
 
+void nk_dgemv(double* A, long N, long M, long lda, double* x, double* y){
+    long i, j;
+    for(i=0; i<N; i++){
+        y[i] = 0.0;
+        for(j=0; j<M; j++){
+            y[i] += A[i+j*lda]*x[j];
+        }
+    }
+}
+
+
+void nk_dgemvT(double* A, long N, long M, long lda, double* x, double* y){
+    long i, j;
+    for(j=0; j<M; j++){
+        y[j] = 0.0;
+        for(i=0; i<N; i++){
+            y[j] += A[i+j*lda]*x[i];
+            //if(isnan(y[j])>0){fprintf(stderr, "NaN generated in dgevmT at (%ld, %ld)\n", i, j);}
+        }
+    }
+}
+
 void printV(double* x, long n){
     long i;
     for(i=0; i<n; i++){
@@ -113,6 +135,22 @@ void expand(long* pos, double* val, long n, long* pos2, double* val2, long n2, d
     }
 }
 
+void expandInt(int* pos, double* val, int n, int* pos2, double* val2, int n2, double* w){// n < n2
+    int i=0, j=0;
+    while(i<n){
+        if(pos2[j]<pos[i]){
+            j++;
+        }else if(pos[i]<pos2[j]){
+            i++;
+        }else if(pos[i]==pos2[j]){
+            val2[j] = val[i];
+            w[j] = 1.0;
+            i++;
+            j++;
+        }
+    }
+}
+
 void multisoftmax(double* eta, double* p, long N, long H){
     long i, j;
     double tot, geta;
@@ -182,10 +220,6 @@ void sumTo1(double* x, long n){
 
 
 
-
-
-
-
 long lmin(long a, long b){
     if(a>b){return b;}
     return a;
@@ -231,6 +265,12 @@ double nk_lsum3(double* x, double* p, long n, long ldx){
     for(i=0; i<n; i++){res += x[i*ldx]*log(p[i*ldx]) + (1.-x[i*ldx])*log(1.-p[i*ldx]);}
     return res;
 }
+
+long nk_dcopy(double* x, double* y, long n){
+    long i;
+    for(i=0; i<n; i++){y[i]=x[i];}
+    return i;
+} 
 
 char dim(gzFile f, long* pN, long* pP, long skip){// N x P matrix
     
@@ -395,7 +435,7 @@ void qr_lapack(double* A, double* R, long M, long N, long lda){
     double* tau;  tau  = (double*)calloc(N,     sizeof(double));
     //fprintf(stderr, "M=%ld N=%ld lda=%ld lwork=%ld info=%ld\n", M, N, lda, lwork, info);
     dgeqrf_(&lM, &lN, A, &llda, tau, work, &lwork, &info);
-    fprintf(stderr, "dgeqrf=%d\n", info);
+    fprintf(stderr, "dgeqrf=%ld\n", info);
     
     long K = N;
     long i,j;
@@ -408,7 +448,7 @@ void qr_lapack(double* A, double* R, long M, long N, long lda){
     lM=(long)M; lN=(long)N; llda=(long)lda;
     long lK=(long)K;
     dorgqr_(&lM, &lN, &lK, A, &llda, tau, work, &lwork, &info);
-    fprintf(stderr, "dorgqr=%d\n", info);
+    fprintf(stderr, "dorgqr=%ld\n", info);
     free(work);
     free(tau);
 }
