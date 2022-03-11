@@ -22,7 +22,7 @@ int cmpdr (const void * a, const void * b){
 }
 
 // P = expanded ncol
-long readTable(gzFile f, double* X, double* bf, char* type, long* nexp, double** Xk, double** Bs, long nrow, long ncol, long* cumloci, long* cumcol, long P, double sigma, long nfeatures){
+long readTable(gzFile f, double* X, double* bf, char* type, long* nexp, double** Xk, double** Bs, long nrow, long ncol, long* cumloci, long* cumcol, long P, double sigma, long nfeatures, long* ufeatures, long* nefeatures){
     // j all col in f
     // l only N & C
     // cumcol only N & C
@@ -31,7 +31,7 @@ long readTable(gzFile f, double* X, double* bf, char* type, long* nexp, double**
     char c;
     char* cell; cell = (char*)calloc(1000, sizeof(char));
     double dcell;
-    long lcell;
+    long lcell, lcell_now=0, lcell_prev=0;
     gzseek(f, 0L, SEEK_SET);
     for(i=0; i<nrow; i++){
         l=0;
@@ -70,8 +70,12 @@ long readTable(gzFile f, double* X, double* bf, char* type, long* nexp, double**
                         l++;
                     }else if(type[j]=='I'){
                         sscanf(cell, "%ld", &lcell);
-			if(lcell>nfeatures){fprintf(stderr, "The value of ID column (cell=%s, l=%ld) exceeds the number of features (=%ld). Aborted.\n", cell, lcell, nfeatures); return 1;}
-                        cumloci[lcell]=i+1;
+                        if(lcell!=lcell_prev){lcell_now++; lcell_prev=lcell;}
+			if(lcell_now>nfeatures){fprintf(stderr, "The value of ID column (cell=%s, l=%ld) exceeds the number of features (=%ld). Aborted.\n", cell, lcell_now, nfeatures); return 1;}
+			ufeatures[lcell_now-1] = lcell;
+			(*nefeatures) = lcell_now;
+                        cumloci[lcell_now]=i+1;
+//fprintf(stderr, "%ld %ld\n", lcell, lcell_now);
                     }
                     k = 0;
                     break;
@@ -150,6 +154,7 @@ void* Estep(void *args){
     double* pjk; pjk = pmt->pjk;
     double* z;   z   = pmt->z;
     double* Z1;  Z1  = pmt->Z1;
+    double* RBF;  RBF  = pmt->RBF;
     double* w;   w   = pmt->w;
     double* y;   y   = pmt->y;
     double* Xt;  Xt  = pmt->Xt;
@@ -176,9 +181,11 @@ void* Estep(void *args){
         // z   <- pjk, BF, Pi; &
         // Z1  <- z
         tot = 1.0 - Pi[j];
+	RBF[j] = 0.0;
         for(k=cumloci[j]; k<cumloci[j+1]; k++){
             z[k] = Pi[j]*pjk[k]*BF[k];
             tot += Pi[j]*pjk[k]*BF[k];
+            RBF[j] += pjk[k]*BF[k];
         }
         pmt->lkhd += log(tot);
         //if(isnan(pmt->lkhd)>0 && nanflag==0){fprintf(stderr, "Likelihood became NaN at j=%ld %lf\n", j, Pi[j]); nanflag=1;}
@@ -220,7 +227,7 @@ void* Estep(void *args){
                 Ie[l+l2*P] += XjTZj[l]*XjTZj[l2];
             }
         }
-    }else{Z1[j]=Pi[j]=0.0;}}
+    }else{RBF[j]=Z1[j]=Pi[j]=0.0;}}
     
     free(XjTZj);
     free(xb);
@@ -234,12 +241,15 @@ void* Estep(void *args){
 long Itr;
 void Mstep(double* Xt, double* X0, double* R, double* y, double* beta, double* beta_prior, long L, long P, double lambda, double* Pis){
     long i, j, ldx = P+L;
+//fprintf(stderr, "penalty(%ld)=",P);
     for(i=0; i<P; i++){
         y[L+i]=0.0;
         for(j=0; j<P; j++){
+//fprintf(stderr, "%lf,", lambda*X0[L+i+ldx*j]);
             Xt[L+i+ldx*j] = lambda*X0[L+i+ldx*j];
         }
     }
+//fprintf(stderr, "\n");
     // QR decomposition
     qr(Xt, R, ldx, P, ldx);
     // beta1 <- t(Xt) %*% y
@@ -250,9 +260,20 @@ void Mstep(double* Xt, double* X0, double* R, double* y, double* beta, double* b
 #endif
     // beta  <- backsolve(R, beta1)
     BackSolve(R, P, beta+P+1, beta);
-    double th = 15.0;
+
+    
+    //double th = 15.0;
     //for(i=0; i<P; i++){if(beta[i]>th){beta[i]=th;}else if(beta[i]<(-th)){beta[i]=th;}}
-    for(i=0; i<P; i++){if(isnan(beta[i])>0){fprintf(stderr, "beta[%ld] is NaN\n", i);beta[i]=beta_prior[i];}}
+    for(i=0; i<P; i++){
+	if(isnan(beta[i])>0){
+		//fprintf(stderr, "beta[%ld] is NaN\n", i);
+		beta[i]=beta_prior[i];
+	}else{
+		//fprintf(stderr, "%lf,", beta_prior[i]);
+		beta[i] += beta_prior[i];
+	}
+    }
+		//fprintf(stderr, "\n");
     if(Itr<1){for(i=0; i<P; i++){beta[i]=beta_prior[i];}}
 }
 
@@ -287,7 +308,7 @@ double getQval(double* Z1, double* Pis, double* z, double* pjk, double* BF, long
 }
 
 
-long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, long Pj, long* cumloci, double* beta, double* gamma, double* Pis, double* pjk, double* Z1, double* z, long nthreads, double* plkhd){
+long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, long Pj, long* cumloci, double* beta, double* gamma, double* Pis, double* pjk, double* Z1, double* RBF, double* z, long nthreads, double* plkhd, double* lambda){
     long i, j, k, l, l2;
     
     if(verbose>0)fprintf(stderr, "Model fitting started...\n\n");
@@ -304,7 +325,7 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
     
     // parameters
     double sigma = 10.;
-    double lambda[2] = {5.0, 1.0};
+    //double lambda[2] = {5.0, 10.0};
     lambda[0]=sqrt(lambda[0]*((double)L)/(717473244.0));
     //double* Pis;  Pis= (double*)calloc(nfeatures, sizeof(double)); for(i=0; i<nfeatures; i++){Pis[i]=0.075;}
     //double* beta; beta  = (double*)calloc((Pi+1)*2, sizeof(double)); // coef length Pi + 1 + working space for another Pi + 1
@@ -373,6 +394,7 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
             pmt[tid].pjk  = pjk;
             pmt[tid].z    = z;
             pmt[tid].Z1   = Z1;
+            pmt[tid].RBF  = RBF;
             pmt[tid].w    = w;
             pmt[tid].y    = y;
             pmt[tid].Xt   = Xt;
@@ -420,7 +442,7 @@ long em(double* X0, double* BF, long L, long Pi, double* U0, long nfeatures, lon
             if(verbose>0)fprintf(stderr, "Mstep in variant level\n");
             if(Pi>0 && itr>1) Mstep(Xt, X0, R, y, beta, beta0, L, Pi, lambda[0], Pis);
 // remove
-if(beta[0]>20.){beta[0]=7.;}
+//if(beta[0]>20.){beta[0]=7.;}
 //if(beta[0]<0.){beta[0]=7.;}
             //dgemv(U0, nfeatures, Pj+1, nfeatures+Pj, gamma, Pis); for(i=0; i<nfeatures; i++){Pis[i]=1./(1.+exp(-Pis[i]));}
             if(verbose>0){fprintf(stderr, "beta="); printV2(beta, Pi);}
@@ -433,7 +455,7 @@ if(beta[0]>20.){beta[0]=7.;}
                 y2[i] = (Z1[i]-Pis[i])/sqrt(Pis[i]*(1.-Pis[i]));
                 for(j=0; j<Pj; j++){
                     Ut[i+j*(nfeatures+Pj)] = U0[i+j*(nfeatures+Pj)] * sqrt(Pis[i]*(1.-Pis[i]));
-                    y2[i] += Ut[i+j*(nfeatures+Pj)]*gamma[j];
+                    y2[i] += Ut[i+j*(nfeatures+Pj)]*(gamma[j]-gamma0[j]);
 // remove
 //if(isnan(Ut[i+j*(nfeatures+Pj)])>0){fprintf(stderr, "U[%d,%d] is NaN: U0=%lf varPi=%lf\n", i, j, U0[i+j*(nfeatures+Pj)], sqrt(Pis[i]*(1.-Pis[i])));}
                 }
@@ -525,8 +547,10 @@ int main(int argc, char** argv){
     long* cumcoli=NULL;
     long* cumcolj;
     long* cumloci=NULL;
+    long* ufeatures=NULL;
     long nvari, nvarj;
     long nfeatures=0;
+    long nefeatures=0;
     long pi, pj, Pi, Pj;// numbers of col and expanded col (p & P)
     long nrow=2;
     
@@ -537,6 +561,7 @@ int main(int argc, char** argv){
     
     double* X=NULL;
     double* U;
+    double* U0;
     double* bf=NULL;
     
     for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-f")==0 || strcmp(argv[i], "--n-features")==0){ nfeatures = (long)atoi(argv[i+1]); }}
@@ -578,12 +603,15 @@ int main(int argc, char** argv){
             if(verbose>0) fprintf(stderr, "Loading table (nrows=%ld nfeatures=%ld) started...", nrow, nfeatures);
             X = (double*)calloc(((long)nrow+(long)Pi)*((long)Pi+1), sizeof(double));
             bf= (double*)calloc(nrow,        sizeof(double));
+            ufeatures = (long*)calloc((long)nfeatures, sizeof(long));
             cumloci = (long*)calloc(nfeatures+1, sizeof(double));
             if(X==NULL || bf==NULL || cumloci==NULL){fprintf(stderr, "Memory allocation failed...aborted.\n"); return 1;}
             //if(verbose>0){fprintf(stderr, "cumloci[%ld]=%ld", nfeatures, cumloci[nfeatures]);}
-            if(readTable(fi, X, bf, typi, nxpi, Xki, Bsi, nrow, pi, cumloci, cumcoli, Pi, 1., nfeatures)>0){return 1;};
+            if(readTable(fi, X, bf, typi, nxpi, Xki, Bsi, nrow, pi, cumloci, cumcoli, Pi, 1., nfeatures, ufeatures, &nefeatures)>0){return 1;};
             long ii; for(ii=0; ii<nrow; ii++){bf[ii] *= exp(lbfoffs);} // bf offset
-            if(verbose>0){ 
+            if(verbose>0){
+		fprintf(stderr, "nefeatures=%ld\n",nefeatures); 
+		fprintf(stderr, "nfeatures=%ld\n",nfeatures); 
                 //fprintf(stderr, "cumloci: "); printVL(cumloci, nfeatures+1);
                 //fprintf(stderr, "cumcoli: "); printVL(cumcoli, nvari+1);
                 //printM(X, nrow+Pi, Pi+1);
@@ -626,25 +654,41 @@ int main(int argc, char** argv){
             nvarj = l;
             if(typj==NULL){fprintf(stderr, "No column information for %s\n", argv[i+1]); return 1;}
             
-            U = (double*)calloc((nfeatures+Pj)*(Pj+1), sizeof(double)); for(j=0; j<nfeatures; j++){U[j]=1.0;}
-            readTable(fj, U, NULL, typj, nxpj, Xkj, Bsj, nfeatures, pj, NULL, cumcolj, Pj, 10.0, nfeatures);
+            U0 = (double*)calloc((nfeatures+Pj)*(Pj+1), sizeof(double)); for(j=0; j<nfeatures; j++){U0[j]=1.0;}; U0[nfeatures]=1.0;
+            U  = (double*)calloc((nefeatures+Pj)*(Pj+1), sizeof(double)); 
+            readTable(fj, U0, NULL, typj, nxpj, Xkj, Bsj, nfeatures, pj, NULL, cumcolj, Pj, 1.0, nfeatures, NULL, NULL);
+            for(j=0; j<Pj+1; j++){// data body
+                for(k=0; k<nefeatures; k++){
+                    U[j*(nefeatures+Pj)+k] = U0[j*(nfeatures+Pj)+ufeatures[k]-1];
+                    // skip ufeatures
+		    //U[j*(nefeatures+Pj)+k] = U0[j*(nfeatures+Pj)+k-1];
+                }            
+            }
+            for(k=nfeatures; k<nfeatures+Pj; k++){// penalty
+                for(j=0; j<Pj+1; j++){
+                    U[j*(nefeatures+Pj)+k-(nfeatures-nefeatures)] = U0[j*(nfeatures+Pj)+k];
+                }
+            }
+            nfeatures = nefeatures;
             if(verbose>0){
                 //printM(U, nfeatures+Pj, Pj+1);
                 printM2(U+nfeatures, Pj, Pj+nfeatures, Pj);
                 //fprintf(stderr, "cumcolj: "); printVL(cumcolj, nvarj+1);
             }
-            break;
+           break;
         }
     }
     if(fj==NULL){
         if(verbose>0)fprintf(stderr, "No covariate for feature level prior probability.\n"); 
         Pj = 1;
-        U = (double*)calloc((nfeatures+Pj)*(Pj+1), sizeof(double)); for(j=0; j<nfeatures; j++){U[j]=1.0;}
+        nfeatures = nefeatures;
+        U = (double*)calloc((nfeatures+Pj)*(Pj+1), sizeof(double)); for(j=0; j<nfeatures; j++){U[j]=1.0;}; U[nfeatures]=1.0;
     }
     
     double* beta; beta  = (double*)calloc((Pi+1)*2+Pi*Pi, sizeof(double)); // coef length Pi + 1 + working space for another Pi + 1
     double* gamma;gamma = (double*)calloc((Pj+1)*2+Pj*Pj, sizeof(double)); // (Pj + 1) x 2
     double* Z1;   Z1   = (double*)calloc(nfeatures+Pj, sizeof(double)); // 1-Z0j; j=1,...,nfeatures
+    double* RBF;  RBF  = (double*)calloc(nfeatures+Pj, sizeof(double)); // 1-Z0j; j=1,...,nfeatures
     double* z;    z    = (double*)calloc(nrow+Pi, sizeof(double)); // porsterior probs
     double* pjk;  pjk  = (double*)calloc(nrow+Pi, sizeof(double));  // softmax prior
     
@@ -664,7 +708,7 @@ int main(int argc, char** argv){
     //beta0[1] =  3.072989;
     //if(Pi>2)beta0[2] = 2.631762;
     
-    gamma0[0] = -2.6;
+    gamma0[0] = 0.0;
     /*gamma0[0] = -8.000779;
     gamma0[1] = 9.790940;
     gamma0[2] = 145.083555;
@@ -680,14 +724,20 @@ int main(int argc, char** argv){
         fprintf(stderr, "Init Gamma: "); printV2(gamma0, Pj);
     }}
     
-    
+    double lambda[2] = {5.0, 0.0};
+    for(i=0; i<argc-2; i++){if(strcmp(argv[i], "--ab-feature-level")==0){ 
+        double a_feature = (double)atof(argv[i+1]); 
+        double b_feature = (double)atof(argv[i+2]);
+        gamma0[0] = log(a_feature/b_feature); // mean of gaussian prior
+        lambda[1] = sqrt(a_feature*b_feature*(a_feature+b_feature+1.0))/(a_feature+b_feature); // square root of precision of gaussian prior
+    }}
     
     long nthreads = 1;
     for(i=0; i<argc-1; i++){if(strcmp(argv[i], "-t")==0 || strcmp(argv[i], "--n-threads")==0){ nthreads = (long)atoi(argv[i+1]); }}
     
     double lkhd;
     long itr;
-    itr = em(X, bf, nrow, Pi, U, nfeatures, Pj, cumloci, beta, gamma, Pis, pjk, Z1, z, nthreads, &lkhd);
+    itr = em(X, bf, nrow, Pi, U, nfeatures, Pj, cumloci, beta, gamma, Pis, pjk, Z1, RBF, z, nthreads, &lkhd, lambda);
     
     
     
@@ -733,7 +783,16 @@ int main(int argc, char** argv){
     fwrite(Pis,   nfeatures, sizeof(double), pibin);
     fwrite(gamma, Pj*(Pj+1), sizeof(double), hessf2);
     
-    
+     
+    for(i=0; i<argc; i++){if(strcmp(argv[i], "-z")==0){
+        sprintf(ofname, "%s/Z1.gz", prefix);
+        gzFile zf;    zf    = gzopen(ofname, "wb6f");
+        for(j=0; j<nfeatures; j++){
+            gzprintf(zf, "%lf\t%lf\t%lf\n", Pis[j], RBF[j], Z1[j]);
+        }
+        gzclose(zf);
+    }}
+
     
     for(i=0; i<argc; i++){if(strcmp(argv[i], "-p")==0 || strcmp(argv[i], "--posterior-probability")==0){
         sprintf(ofname, "%s/pp.gz", prefix);
