@@ -42,6 +42,7 @@ typedef struct{
 	double* pjk;
 	double* z;
 	double* Z1;
+	double* RBF;
 	double* w;
 	double* y;
 	
